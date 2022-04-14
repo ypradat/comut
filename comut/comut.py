@@ -10,7 +10,6 @@ from collections import defaultdict
 
 
 class CoMut:
-
     '''A user-created :class: `CoMut` object.
 
     Params:
@@ -44,12 +43,14 @@ class CoMut:
 
         # user accessible attributes
         self.samples = None
+        self.genes = None
         self.axes = {}
         self.figure = None
 
         # attributes for manipulation and storage
         self._plots = {}
         self._side_plots = defaultdict(dict)
+        self._over_plots = defaultdict(dict)
 
     @classmethod
     def _get_default_categorical_cmap(cls, n_cats):
@@ -233,8 +234,10 @@ class CoMut:
                              ' comut.samples'.format(extra))
 
     def add_categorical_data(self, data, name=None, category_order=None,
-                             value_order=None, mapping=None, borders=None,
-                             priority=None, tick_style='normal'):
+                             value_order=None, mapping=None, borders=None, priority=None,
+                             xtick_style='normal', xtick_fontdict=None, xtick_show=True, xtick_rotation=90,
+                             ytick_style='normal', ytick_fontdict=None, ytick_show=True, ytick_rotation=0):
+
         '''Add categorical data to the CoMut object.
 
         Params:
@@ -315,8 +318,29 @@ class CoMut:
             If Amp exists alongside two other values, it will be drawn as
             Amp + Multiple (two triangles), instead of Multiple.
 
-        tick_style: str, default='normal', 'italic', 'oblique'
+        xtick_style: str, default='normal', 'italic', 'oblique'
+            Tick style to be used for the x axis ticks (sample names).
+
+        xtick_fontdict: dict, default=None
+            Dictionary controlling the appearance of x axis tick labels (sample names).
+
+        xtick_show: bool, default=True
+            Set to False to hide completely x axis ticks and labels (sample names).
+
+        xtick_rotation: bool, default=90
+            Rotation in degrees of x axis ticks and labels (sample names).
+
+        ytick_style: str, default='normal', 'italic', 'oblique'
             Tick style to be used for the y axis ticks (category names).
+
+        ytick_fontdict: dict, default=None
+            Dictionary controlling the appearance of y axis tick labels (category names).
+
+        ytick_show: bool, default=True
+            Set to False to hide completely y axis ticks and labels (category names).
+
+        ytick_rotation: bool, default=0
+            Rotation in degrees of y axis ticks and labels (category names).
 
         Returns:
         --------
@@ -411,16 +435,104 @@ class CoMut:
 
         # parse data into dataframe of tuples as required for plotting
         parsed_data = self._parse_categorical_data(data, category_order, self.samples,
-                                             value_order, priority)
+                                                   value_order, priority)
 
         # store plot data
         plot_data = {'data': parsed_data, 'patches_options': mapping,
-                     'tick_style': tick_style, 'borders': borders, 'type': 'categorical'}
+                     'xtick_style': xtick_style, 'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
+                     'xtick_rotation': xtick_rotation,
+                     'ytick_style': ytick_style, 'ytick_fontdict': ytick_fontdict, 'ytick_show': ytick_show,
+                     'ytick_rotation': ytick_rotation,
+                     'borders': borders, 'type': 'categorical'}
 
         self._plots[name] = plot_data
         return None
 
-    def add_continuous_data(self, data, mapping='binary', tick_style='normal',
+    def add_scatter_data(self, data, paired_name=None, name=None, mapping=None, marker="*", s=25):
+        '''Add a sample level symbol data to the CoMut object
+
+        Params:
+        -----------
+        data: pandas dataframe
+            A tidy dataframe containing data. Required columns are
+            sample, category, and value.
+
+        paired_name: str or int
+            Name of plot on which the symbols will be placed. Must reference
+            a dataset already added to the CoMut object.
+
+        name: str
+            The name of the dataset being added. Used to references axes.
+            defaults to the integer index of the plot being added.
+
+        mapping: dict
+            A mapping of column to color. Dictionary should map values of column `value`
+            to color (str).
+
+        marker: str, default="*"
+            Marker for the scatter plot.
+
+        s: float, default=25
+            Marker size.
+
+        Returns:
+        --------
+        None'''
+        # check that required columns exist
+        req_cols = {'sample', 'category', 'value'}
+        if not req_cols.issubset(data.columns):
+            missing_cols = req_cols - set(data.columns)
+            msg = ', '.join(list(missing_cols))
+            raise ValueError('Data missing required columns: {}'.format(msg))
+
+        # check that samples are a subset of current samples.
+        samples = list(data['sample'].drop_duplicates())
+        if self.samples is None:
+            self.samples = samples
+        else:
+            self._check_samples(samples)
+
+        # set defaults
+        if name is None:
+            name = len(self._plots)
+
+        # build default color map, uses vivid
+        unique_values = set(data['value'])
+        if mapping is None:
+            mapping = {}
+
+            # define default colors
+            default_cmap = self._get_default_categorical_cmap(len(unique_values))
+            for i, value in enumerate(unique_values):
+                mapping[value] = default_cmap[i]
+
+        elif isinstance(mapping, dict):
+            # check that all alt types present in data are in mapping
+            if not unique_values.issubset(mapping.keys()):
+                missing_cats = unique_values - set(mapping.keys())
+                raise ValueError('Categories present in dataframe {}'
+                                 ' are missing from mapping'.format(missing_cats))
+        else:
+            raise ValueError('Invalid mapping. Mapping must be a dict.')
+
+
+        # convert sample to an index
+        data_paired = self._plots[paired_name]["data"]
+        data_paired_X = pd.DataFrame({"sample": data_paired.columns, "X": np.arange(0, data_paired.shape[1])})
+        data_paired_Y = pd.DataFrame({"category": data_paired.index, "Y": np.arange(0, data_paired.shape[0])})
+        data = data.merge(data_paired_X, how="left", on="sample")
+        data = data.merge(data_paired_Y, how="left", on="category")
+
+        # store plot data
+        plot_data = {'data': data, 'mapping': mapping, 'marker': marker, 's': s, 'type': 'scatter'}
+
+        self._over_plots[paired_name][name] = plot_data
+        return None
+
+
+    def add_continuous_data(self, data, mapping='binary',
+                             xtick_style='normal', xtick_fontdict=None, xtick_show=True, xtick_rotation=90,
+                             ytick_style='normal', ytick_fontdict=None, ytick_show=True, ytick_rotation=0,
                             value_range=None, cat_mapping=None, name=None):
         '''Add a sample level continuous data to the CoMut object
 
@@ -435,6 +547,30 @@ class CoMut:
             A mapping of continuous value to color. Can be defined as
             matplotlib colormap (str) or a custom LinearSegmentedColormap
             Samples with missing information are colored according to 'Absent'.
+
+        xtick_style: str, default='normal', 'italic', 'oblique'
+            Tick style to be used for the x axis ticks (sample names).
+
+        xtick_fontdict: dict, default=None
+            Dictionary controlling the appearance of x axis tick labels (sample names).
+
+        xtick_show: bool, default=True
+            Set to False to hide completely x axis ticks and labels (sample names).
+
+        xtick_rotation: bool, default=90
+            Rotation in degrees of x axis ticks and labels (sample names).
+
+        ytick_style: str, default='normal', 'italic', 'oblique'
+            Tick style to be used for the y axis ticks (category names).
+
+        ytick_fontdict: dict, default=None
+            Dictionary controlling the appearance of y axis tick labels (category names).
+
+        ytick_show: bool, default=True
+            Set to False to hide completely y axis ticks and labels (category names).
+
+        ytick_rotation: bool, default=0
+            Rotation in degrees of y axis ticks and labels (category names).
 
         value_range: tuple or list
             min and max value of the data. Data will be normalized using
@@ -532,14 +668,19 @@ class CoMut:
                                              sample_order=self.samples, value_order=[], priority=[])
 
         # store plot data
-        plot_data = {'data': parsed_data, 'patches_options': dict_mapping, 'tick_style': tick_style,
+        plot_data = {'data': parsed_data, 'patches_options': dict_mapping,
+                     'xtick_style': xtick_style, 'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
+                     'xtick_rotation': xtick_rotation,
+                     'ytick_style': ytick_style, 'ytick_fontdict': ytick_fontdict, 'ytick_show': ytick_show,
+                     'ytick_rotation': ytick_rotation,
                      'type': 'continuous', 'range': value_range, 'colorbar': mapping}
 
         self._plots[name] = plot_data
         return None
 
-    def add_bar_data(self, data, name=None, stacked=False, mapping=None,
-                     ylabel='', bar_kwargs=None):
+    def add_bar_data(self, data, name=None, stacked=False, mapping=None, ytick_fontdict=None, ytick_show=True,
+                     yaxis_show=True, ylabel='', ylabel_fontsize=None, ylabel_fontweight=None, ylabel_rotation=None,
+                     bar_kwargs=None):
         '''Add a bar plot to the CoMut object
 
         Params:
@@ -559,8 +700,26 @@ class CoMut:
             A mapping of column to color. Dictionary should map column name
             to color (str) or to plot kwargs.
 
+        ytick_fontdict: dict, default=None
+            Dictionary controlling the appearance of y axis tick labels.
+
+        ytick_show: bool, default=True
+            Set to False to hide completely y axis ticks and labels.
+
+        yaxis_show: bool, default=True
+            Set to False to hide the y-axis line.
+
         ylabel: str, default ''
             The label for the y axis.
+
+        ylabel_fontsize: float, default=None
+            The fontsize of the label for the y axis.
+
+        ylabel_fontweight: str, default=None
+            The fontweight of the label for the y axis.
+
+        ylabel_rotation: float, default=None
+            The rotation of the label for the y axis.
 
         bar_kwargs: dict
             dict of kwargs to be passed to plt.bar
@@ -604,7 +763,9 @@ class CoMut:
 
         # store plot data
         plot_data = {'data': bar_df_indexed, 'bar_options': mapping, 'type': 'bar',
-                     'stacked': stacked, 'ylabel': ylabel, 'bar_kwargs': bar_kwargs}
+                     'stacked': stacked, 'ytick_fontdict': ytick_fontdict, 'ytick_show': ytick_show,
+                     'ylabel': ylabel, 'ylabel_fontsize': ylabel_fontsize, 'ylabel_fontweight': ylabel_fontweight,
+                     'ylabel_rotation': ylabel_rotation, 'yaxis_show': yaxis_show, 'bar_kwargs': bar_kwargs}
 
         self._plots[name] = plot_data
         return None
@@ -679,8 +840,9 @@ class CoMut:
         self._plots[name] = plot_data
         return None
 
-    def _plot_patch_data(self, ax, data, name, mapping, borders, tick_style,
-                        x_padding=0, y_padding=0, tri_padding=0):
+    def _plot_patch_data(self, ax, data, name, mapping, borders,
+                         ytick_style='normal', ytick_fontdict=None, ytick_show=True, ytick_rotation=0,
+                         x_padding=0, y_padding=0, tri_padding=0):
         '''Plot data represented as patches on CoMut plot
 
         Params:
@@ -700,6 +862,18 @@ class CoMut:
         borders: list-like
             borders from add_categorical_data
 
+        ytick_style: str, default='normal', 'italic', 'oblique'
+            Tick style to be used for the y axis ticks (category names).
+
+        ytick_fontdict: dict, default=None
+            Dictionary controlling the appearance of y axis tick labels (category names).
+
+        ytick_show: bool, default=True
+            Set to False to hide completely y axis ticks and labels (category names).
+
+        ytick_rotation: bool, default=0
+            Rotation in degrees of y axis ticks and labels (category names).
+
         x_padding: float, default=0
             x_padding from plot_comut
 
@@ -709,8 +883,6 @@ class CoMut:
         tri_padding: float, default=0
             tri_padding from plot_comut
 
-        tick_style: str, default='normal', 'italic', 'oblique'
-            Tick style to be used for the y axis ticks (category names).
 
         Returns:
         -------
@@ -759,7 +931,8 @@ class CoMut:
 
                     # plot the slashed line. This code is heuristic and does
                     # not currently scale well.
-                    ax.plot([x_base + x_padding/2, x_base + width - x_padding/2], [y_base + y_padding/2, y_base + height - y_padding/2],
+                    ax.plot([x_base + x_padding/2, x_base + width - x_padding/2],
+                            [y_base + y_padding/2, y_base + height - y_padding/2],
                              color=patch_options['edgecolor'], linewidth=0.5,
                              solid_capstyle='round')
 
@@ -829,9 +1002,12 @@ class CoMut:
         ax.set_ylim([0, len(data.index) + y_padding])
         ax.set_xlim([0, len(data.columns) + x_padding])
 
-        # add ytick labels
-        ax.set_yticks(np.arange(0.5, len(data.index) + 0.5))
-        ax.set_yticklabels(data.index, style=tick_style)
+        # customize ytick labels
+        if ytick_show:
+            ax.set_yticks(np.arange(0.5, len(data.index) + 0.5))
+            ax.set_yticklabels(data.index, fontdict=ytick_fontdict, style=ytick_style, rotation=ytick_rotation)
+        else:
+            ax.set_yticklabels([])
 
         # delete tick marks and make x axis invisible
         ax.get_xaxis().set_visible(False)
@@ -849,7 +1025,15 @@ class CoMut:
         self.axes[name] = ax
         return ax
 
-    def _plot_bar_data(self, ax, data, name, mapping, stacked, ylabel, bar_kwargs):
+    def _plot_scatter_data(self, ax, data, name, mapping, marker, s):
+        for value, color in mapping.items():
+            mask_data = data["value"]==value
+            ax.scatter(data.loc[mask_data]["X"]+0.5, data.loc[mask_data]["Y"]+0.5, marker=marker, s=s, color=color)
+
+        return ax
+
+    def _plot_bar_data(self, ax, data, name, mapping, stacked, ytick_fontdict, ytick_show, yaxis_show, ylabel,
+                       ylabel_fontsize, ylabel_fontweight, ylabel_rotation, bar_kwargs):
         '''Plot bar plot on CoMut plot
 
         Params:
@@ -869,8 +1053,26 @@ class CoMut:
         stacked: bool
             stacked from add_bar_data
 
+        ytick_fontdict: dict
+            ytick_fontdict from add_bar_data
+
+        ytick_show: bool
+            ytick_show from add_bar_data
+
+        yaxis_show: bool
+            yaxis_show from add_bar_data
+
         ylabel: str
             ylabel from add_bar_data
+
+        ylabel_fontsize: float
+            ylabel_fontsize from add_bar_data
+
+        ylabel_fontweight: str
+            ylabel_fontweight from add_bar_data
+
+        ylabel_rotation: float
+            ylabel_rotation from add_bar_data
 
         bar_kwargs: dict
             bar_kwargs from add_bar_data
@@ -906,24 +1108,45 @@ class CoMut:
                 ax.bar(x_range, bar_data, align='center', color=color,
                        bottom=bottom, label=column, **bar_kwargs)
 
+            y_max = cum_bar_df.iloc[:,-1].max()
+
         # plot unstacked bar. Label is '' to subvert legend.
         else:
             color = mapping[data.columns[0]]
             ax.bar(x_range, data.iloc[:, 0],
                    align='center', color=color, label='', **bar_kwargs)
 
-        # make x axis invisible and despine all axes
-        ax.get_xaxis().set_visible(False)
-        for loc in ['top', 'right', 'bottom', 'left']:
-            ax.spines[loc].set_visible(False)
+            y_max = data.iloc[:,0].max()
+
+
+        # customize ytick labels
+        if ytick_show:
+            ax.set_yticks([0, y_max])
+            ax.set_yticklabels([0, y_max], fontdict=ytick_fontdict, style="normal", rotation=0)
+        else:
+            ax.set_yticklabels([])
 
         # set the ylabel
-        ax.set_ylabel(ylabel)
+        ax.set_ylabel(ylabel, fontsize=ylabel_fontsize, fontweight=ylabel_fontweight, rotation=ylabel_rotation)
+
+        # make x axis invisible
+        ax.get_xaxis().set_visible(False)
+
+        if yaxis_show:
+            # despine all axes except left
+            for loc in ['top', 'right', 'bottom']:
+                ax.spines[loc].set_visible(False)
+        else:
+            # despine all axes except left
+            for loc in ['top', 'right', 'bottom', 'left']:
+                ax.spines[loc].set_visible(False)
+
         self.axes[name] = ax
         return ax
 
-    def add_side_bar_data(self, data, paired_name, name=None, position='right',
-                          mapping=None, stacked=False, xlabel='', bar_kwargs=None):
+    def add_side_bar_data(self, data, paired_name, name=None, position='right', mapping=None, stacked=False,
+                          xtick_fontdict=None, xtick_show=True, xaxis_show=True, xlabel='', xlabel_fontsize=None,
+                          xlabel_fontweight=None, xlabel_rotation=None, bar_kwargs=None):
         '''Add a side bar plot to the CoMut object
 
         Params:
@@ -952,8 +1175,26 @@ class CoMut:
             A mapping of column to color. Dictionary should map column name
             to color (str) or to plot kwargs.
 
+        xtick_fontdict: dict, default=None
+            Dictionary controlling the appearance of x axis tick labels.
+
+        xtick_show: bool, default=True
+            Set to False to hide completely x axis ticks and labels.
+
+        xaxis_show: bool, default=True
+            Set to False to hide the x-axis line.
+
         xlabel: str, default ''
-            The label for the x axis
+            The label for the x axis.
+
+        xlabel_fontsize: float, default=None
+            The fontsize of the label for the x axis.
+
+        xlabel_fontweight: str, default=None
+            The fontweight of the label for the x axis.
+
+        xlabel_rotation: float, default=None
+            The rotation of the label for the x axis.
 
         bar_kwargs: dict
             kwargs to be passed to plt.barh during the process of plotting.
@@ -1001,7 +1242,7 @@ class CoMut:
         # add missing categories and assign them a value of 0 for all rows
         missing_categories = paired_cats - side_cats
         data_indexed = data_indexed.reindex(list(paired_plot['data'].index))
-        data.loc[missing_categories, :] = 0
+        data.loc[list(missing_categories), :] = 0
 
         # make default mapping
         if mapping is None:
@@ -1009,9 +1250,10 @@ class CoMut:
                        for i, column in enumerate(data_indexed.columns)}
 
         # store the data
-        plot_data = {'data': data_indexed, 'mapping': mapping,
-                     'stacked': stacked, 'position': position, 'xlabel': xlabel,
-                     'bar_kwargs': bar_kwargs}
+        plot_data = {'data': data_indexed, 'mapping': mapping, 'stacked': stacked, 'position': position,
+                     'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
+                     'xlabel': xlabel, 'xlabel_fontsize': xlabel_fontsize, 'xlabel_fontweight': xlabel_fontweight,
+                     'xlabel_rotation': xlabel_rotation, 'xaxis_show': xaxis_show, 'bar_kwargs': bar_kwargs}
 
         self._side_plots[paired_name][name] = plot_data
         return None
@@ -1065,8 +1307,8 @@ class CoMut:
         self.axes[name] = ax
         return self
 
-    def _plot_side_bar_data(self, ax, name, data, mapping, position, stacked,
-                           xlabel, y_padding, bar_kwargs):
+    def _plot_side_bar_data(self, ax, name, data, mapping, position, stacked, xtick_fontdict, xtick_show, xaxis_show,
+                            xlabel, xlabel_fontsize, xlabel_fontweight, xlabel_rotation, y_padding, bar_kwargs):
         '''Plot side bar plot on CoMut plot
 
         Params:
@@ -1089,8 +1331,26 @@ class CoMut:
         stacked: bool
             stacked from add_side_bar_data
 
+        xtick_fontdict: dict
+            xtick_fontdict from add_side_bar_data
+
+        xtick_show: bool
+            xtick_show from add_side_bar_data
+
+        xaxis_show: bool
+            xaxis_show from add_side_bar_data
+
         xlabel: str
             xlabel from add_side_bar_data
+
+        xlabel_fontsize: float
+            xlabel_fontsize from add_side_bar_data
+
+        xlabel_fontweight: str
+            xlabel_fontweight from add_side_bar_data
+
+        xlabel_rotation: float
+            xlabel_rotation from add_side_bar_data
 
         y_padding: float
             y_padding from plot_comut
@@ -1132,20 +1392,19 @@ class CoMut:
                 ax.barh(y_range, bar_data, align='center', color=color,
                         left=left, label=column, **bar_kwargs)
 
+            x_max = cum_bar_df.iloc[:,-1].max()
+
         # plot unstacked bar
         else:
             color = mapping[data.columns[0]]
             ax.barh(y_range, data.iloc[:, 0],
                     align='center', color=color, **bar_kwargs)
+            x_max = data.iloc[:,0].max()
 
         # reverse x axis if position is to the left
         if position == 'left':
             xlim = ax.get_xlim()
             ax.set_xlim(xlim[::-1])
-
-        # turn off the y axis by default
-        ax.set_yticklabels([])
-        ax.tick_params(axis='y', which='both', length=0)
 
         for loc in ['top', 'right', 'left']:
             ax.spines[loc].set_visible(False)
@@ -1153,10 +1412,34 @@ class CoMut:
         # set xlabel
         ax.set_xlabel(xlabel)
 
+        # customize xtick labels
+        if xtick_show:
+            ax.set_xticks([0, x_max])
+            ax.set_xticklabels([0, x_max], fontdict=xtick_fontdict, style="normal", rotation=0)
+        else:
+            ax.set_xticklabels([])
+
+        # set the xlabel
+        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize, fontweight=xlabel_fontweight, rotation=xlabel_rotation)
+
+        # make y axis invisible
+        # ax.set_yticklabels([])
+        # ax.tick_params(axis='y', which='both', length=0)
+        ax.get_yaxis().set_visible(False)
+
+        if xaxis_show:
+            # despine all axes except bottom
+            for loc in ['top', 'right', 'left']:
+                ax.spines[loc].set_visible(False)
+        else:
+            # despine all axes except left
+            for loc in ['top', 'right', 'bottom', 'left']:
+                ax.spines[loc].set_visible(False)
+
         self.axes[name] = ax
         return ax
 
-    def _plot_data_on_axis(self, ax, plot_name, x_padding, y_padding, tri_padding):
+    def _plot_data_on_axis(self, ax, plot_name, plot_type, plot_params, data, x_padding, y_padding, tri_padding):
         '''Wrapper function for plotting data on an axis
 
         Params:
@@ -1164,9 +1447,18 @@ class CoMut:
         ax: axis object
             Axis object on which to plot
 
-        plot_name:
+        plot_name: str
             Name of plot, used to index into plot dictionary associated
             with CoMut object.
+
+        plot_type: str
+            Type of plot, among 'categorical', 'continuous', 'scatter' or 'bar'.
+
+        plot_params: dict
+            A dictionary with all the parameters required for drawing the plot.
+
+        data: pandas dataframe
+            Table containing the data underlying the plot.
 
         x_padding, y_padding: float
             Padding within patches for categorical data
@@ -1178,33 +1470,48 @@ class CoMut:
         --------
         ax: The axis object with now plotted_data'''
 
-        # extract the plot type and data
-        plot_type = self._plots[plot_name]['type']
-        data = self._plots[plot_name]['data']
-
         # extract relevant plotting params depending on plot type, then plot
         if plot_type == 'categorical' or plot_type == 'continuous':
-            mapping = self._plots[plot_name]['patches_options']
-            borders = self._plots[plot_name]['borders'] if plot_type == 'categorical' else []
-            tick_style = self._plots[plot_name]['tick_style']
+            mapping = plot_params['patches_options']
+            borders = plot_params['borders'] if plot_type == 'categorical' else []
+            ytick_style = plot_params['ytick_style']
+            ytick_fontdict = plot_params['ytick_fontdict']
+            ytick_show = plot_params['ytick_show']
+            ytick_rotation = plot_params['ytick_rotation']
             ax = self._plot_patch_data(ax=ax, data=data, name=plot_name, mapping=mapping, borders=borders,
-                                      x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding,
-                                      tick_style=tick_style)
+                                       ytick_style=ytick_style, ytick_fontdict=ytick_fontdict, ytick_show=ytick_show,
+                                       ytick_rotation=ytick_rotation,
+                                       x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding)
+
+        elif plot_type == "scatter":
+            mapping = plot_params['mapping']
+            marker = plot_params['marker']
+            s = plot_params['s']
+            ax = self._plot_scatter_data(ax=ax, data=data, name=plot_name, mapping=mapping, marker=marker, s=s)
 
         elif plot_type == 'bar':
-            mapping = self._plots[plot_name]['bar_options']
-            stacked = self._plots[plot_name]['stacked']
-            ylabel = self._plots[plot_name]['ylabel']
-            bar_kwargs = self._plots[plot_name]['bar_kwargs']
+            mapping = plot_params['bar_options']
+            stacked = plot_params['stacked']
+            ytick_fontdict = plot_params['ytick_fontdict']
+            ytick_show = plot_params['ytick_show']
+            yaxis_show = plot_params['yaxis_show']
+            ylabel = plot_params['ylabel']
+            ylabel_fontsize = plot_params['ylabel_fontsize']
+            ylabel_fontweight = plot_params['ylabel_fontweight']
+            ylabel_rotation = plot_params['ylabel_rotation']
+            bar_kwargs = plot_params['bar_kwargs']
 
             # set the default width based on padding if not specified for bars
             if 'width' not in bar_kwargs:
                 bar_kwargs['width'] = 1 - 2*x_padding
-            ax = self._plot_bar_data(ax=ax, data=data, name=plot_name, mapping=mapping,
-                                    stacked=stacked, ylabel=ylabel, bar_kwargs=bar_kwargs)
+            ax = self._plot_bar_data(ax=ax, data=data, name=plot_name, mapping=mapping, stacked=stacked,
+                                     ytick_fontdict=ytick_fontdict, ytick_show=ytick_show, yaxis_show=yaxis_show,
+                                     ylabel=ylabel, ylabel_fontsize=ylabel_fontsize,
+                                     ylabel_fontweight=ylabel_fontweight, ylabel_rotation=ylabel_rotation,
+                                     bar_kwargs=bar_kwargs)
 
         elif plot_type == 'indicator':
-            plot_kwargs = self._plots[plot_name]['plot_options']
+            plot_kwargs = plot_params['plot_options']
             ax = self._plot_indicator_data(ax=ax, data=data, name=plot_name, plot_kwargs=plot_kwargs)
 
         return ax
@@ -1495,7 +1802,21 @@ class CoMut:
             if len(plot) == 1:
                 plot_name = plot[0]
                 ax = fig.add_subplot(spec[num_subplots - i - 1, comut_idx], sharex=sharex)
-                ax = self._plot_data_on_axis(ax=ax, plot_name=plot_name, x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding)
+
+                plot_type = self._plots[plot_name]['type']
+                data = self._plots[plot_name]['data']
+                ax = self._plot_data_on_axis(ax=ax, plot_name=plot_name, plot_type=plot_type,
+                                             plot_params=self._plots[plot_name], data=data,
+                                             x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding)
+
+                # extract all overplots on this axis
+                over_plots = self._over_plots[plot_name]
+                for over_name, over_plot in over_plots.items():
+                    plot_type = over_plot['type']
+                    data = over_plot['data']
+                    ax = self._plot_data_on_axis(ax=ax, plot_name=over_name, plot_type=plot_type,
+                                                 plot_params=over_plot, data=data,
+                                                 x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding)
 
                 # extract all sideplots on this axis
                 side_plots = self._side_plots[plot_name]
@@ -1513,8 +1834,7 @@ class CoMut:
 
                     # sideplots are paired with central CoMut plot
                     side_ax = fig.add_subplot(spec[num_subplots - i - 1, sideplot_idx])
-                    side_ax = self._plot_side_bar_data(side_ax, side_name, y_padding=y_padding,
-                                                       **side_plot)
+                    side_ax = self._plot_side_bar_data(side_ax, side_name, y_padding=y_padding, **side_plot)
 
                     # force side axis to match paired axis. Avoiding sharey in case
                     # side bar needs different ticklabels
@@ -1527,23 +1847,39 @@ class CoMut:
                 # reverse the heights to be bottom up
                 height = height[::-1]
                 subplot_spec = gridspec.GridSpecFromSubplotSpec(ncols=1, nrows=num_plots,
-                                                                hspace=subplot_hspace, subplot_spec=spec[num_subplots - i - 1, comut_idx],
+                                                                hspace=subplot_hspace,
+                                                                subplot_spec=spec[num_subplots - i - 1, comut_idx],
                                                                 height_ratios=height)
                 # plot all data in subplots
                 for j, plot_name in enumerate(plot):
 
                     # plot the data on a subplot within that subgridspec
                     ax = fig.add_subplot(subplot_spec[num_plots - j - 1, 0], sharex=sharex)
-                    ax = self._plot_data_on_axis(ax=ax, plot_name=plot_name, x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding)
+                    plot_type = self._plots[plot_name]['type']
+                    data = self._plots[plot_name]['data']
+                    ax = self._plot_data_on_axis(ax=ax, plot_name=plot_name, plot_type=plot_type,
+                                                 plot_params=self._plots[plot_name], data=data,
+                                                 x_padding=x_padding, y_padding=y_padding, tri_padding=tri_padding)
 
                     # side bar plots are not allowed for plots within a subplot
                     if self._side_plots[plot_name]:
                         raise ValueError('Side bar plot for {} cannot be created. '
                                          'Plots within a subplot cannot have a side plot.'.format(plot_name))
 
+
         # add x axis labels to the bottom-most axis, make it visible
-        self.axes[first_plot].set_xticks(np.arange(0.5, len(self.samples) + 0.5))
-        self.axes[first_plot].set_xticklabels(self.samples, rotation=90)
+        xtick_fontdict = self._plots[first_plot]["xtick_fontdict"]
+        xtick_style = self._plots[first_plot]["xtick_style"]
+        xtick_show = self._plots[first_plot]["xtick_show"]
+        xtick_rotation = self._plots[first_plot]["xtick_rotation"]
+
+        if xtick_show:
+            self.axes[first_plot].set_xticks(np.arange(0.5, len(self.samples) + 0.5))
+            self.axes[first_plot].set_xticklabels(self.samples, fontdict=xtick_fontdict, style=xtick_style,
+                                                  rotation=xtick_rotation)
+        else:
+            self.axes[first_plot].set_xticklabels([])
+
         self.axes[first_plot].get_xaxis().set_visible(True)
         self.axes[first_plot].tick_params(axis='x', which='both', bottom=False, length=0)
 
