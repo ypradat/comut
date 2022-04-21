@@ -1253,7 +1253,141 @@ class CoMut:
         plot_data = {'data': data_indexed, 'mapping': mapping, 'stacked': stacked, 'position': position,
                      'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
                      'xlabel': xlabel, 'xlabel_fontsize': xlabel_fontsize, 'xlabel_fontweight': xlabel_fontweight,
-                     'xlabel_rotation': xlabel_rotation, 'xaxis_show': xaxis_show, 'bar_kwargs': bar_kwargs}
+                     'xlabel_rotation': xlabel_rotation, 'xaxis_show': xaxis_show, 'bar_kwargs': bar_kwargs,
+                     'type': 'bar'}
+
+        self._side_plots[paired_name][name] = plot_data
+        return None
+
+
+    def add_side_error_data(self, data, paired_name, name=None, position='right', mapping=None,
+                          xtick_fontdict=None, xtick_show=True, xaxis_show=True, xlabel='', xlabel_fontsize=None,
+                          xlabel_fontweight=None, xlabel_rotation=None):
+        '''Add a side bar plot to the CoMut object
+
+        Params:
+        -----------
+        data: pandas dataframe
+            Dataframe containing data for categories in paired plot. The first
+            column must be category, and other columns should be values for the
+            bar plot.
+
+        paired_name: str or int
+            Name of plot on which the bar plot will be placed. Must reference
+            a dataset already added to the CoMut object.
+
+        name: str
+            The name of the dataset being added. Used to references axes.
+            defaults to the integer index of the plot being added.
+
+        position: str, 'left' or 'right', default 'right'
+            Where the bar plot should be graphed (left or right of paired name
+            plot).
+
+        mapping: dict
+            A mapping of subcategory to graphical parameters. Dictionary should map column name
+            to list of graphical attributes in the following order:
+                - 'pos' deviation (usually between -0.5 and 0.5 from the ith position)
+                - 'col' color of the central marker
+                - 'ecol' color of the edge line
+                - 'els' line style of the edge line
+                - 'elw' line width of the edge line
+                - 'fmt' format of the central marker
+
+        xtick_fontdict: dict, default=None
+            Dictionary controlling the appearance of x axis tick labels.
+
+        xtick_show: bool, default=True
+            Set to False to hide completely x axis ticks and labels.
+
+        xaxis_show: bool, default=True
+            Set to False to hide the x-axis line.
+
+        xlabel: str, default ''
+            The label for the x axis.
+
+        xlabel_fontsize: float, default=None
+            The fontsize of the label for the x axis.
+
+        xlabel_fontweight: str, default=None
+            The fontweight of the label for the x axis.
+
+        xlabel_rotation: float, default=None
+            The rotation of the label for the x axis.
+
+        Returns:
+        --------
+        None'''
+
+        # check formatting
+        if data.columns[0] != 'category':
+            raise ValueError('First column in dataframe must be category')
+
+
+        if data.columns[1] != 'subcategory':
+            raise ValueError('Second column in dataframe must be subcategory')
+
+        # make defaults
+        if name is None:
+            name = len(self._plots)
+
+        if position not in ['left', 'right']:
+            raise ValueError('Position must be left or right')
+
+        # side plots must be paired with a plot that exists
+        if paired_name not in self._plots:
+            raise KeyError('Plot {} does not exist. Side plots must be added'
+                           'to an already existing plot'.format(paired_name))
+
+        # currently, side plot must be paired with a categorical dataset
+        paired_plot = self._plots[paired_name]
+        if paired_plot['type'] != 'categorical':
+            raise ValueError('Side plots can only be added to categorical data')
+
+        # check that the categories match paired plot's categories
+        side_cats = set(data["category"])
+        paired_cats = set(paired_plot['data'].index)
+        if not side_cats.issubset(paired_cats):
+            new_cats = side_cats - paired_cats
+            raise ValueError('Categories {} do not exist in paired plot {}. '
+                             'Categories in side bar plot must be a subset of'
+                             ' those in paired plot.'.format(new_cats, paired_name))
+
+        # make default mapping
+        if mapping is None:
+            poss = [-3, -1, 1, 3]
+            cols = ['red', 'limegreen', 'black', 'royalblue']
+            ecols = ['lightsalmon', 'palegreen', 'lightgray', 'lightskyblue']
+            elss = ['-', '-', '-', '-']
+            elws = [1, 3, 3 ,3]
+            fmts = ['o', 'o', 'o', 'o']
+
+            subcategories = list(data["subcategory"].unique())
+            n_subcategories = len(subcategories)
+            vivid_10 =  palettable.cartocolors.qualitative.Vivid_10.mpl_colors
+            mapping = {}
+
+            for i, subcategory in enumerate(subcategories):
+                pos = -0.3 + 0.6*i/(n_subcategories-1)
+                col = vivid_10[i]
+                ecol = col
+                els = "-"
+                elw = 1
+                fmt = "o"
+                mapping[subcategory] = [pos, col, ecol, els, elw, fmt]
+
+
+        # add Y for positioning bars
+        data_paired = self._plots[paired_name]["data"]
+        data_paired_Y = pd.DataFrame({"category": data_paired.index, "Y": np.arange(0, data_paired.shape[0])})
+        data = data.merge(data_paired_Y, how="left", on="category")
+
+        # store the data
+        plot_data = {'data': data, 'mapping': mapping, 'position': position,
+                     'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
+                     'xlabel': xlabel, 'xlabel_fontsize': xlabel_fontsize, 'xlabel_fontweight': xlabel_fontweight,
+                     'xlabel_rotation': xlabel_rotation, 'xaxis_show': xaxis_show,
+                     'type': 'error'}
 
         self._side_plots[paired_name][name] = plot_data
         return None
@@ -1423,8 +1557,6 @@ class CoMut:
         ax.set_xlabel(xlabel, fontsize=xlabel_fontsize, fontweight=xlabel_fontweight, rotation=xlabel_rotation)
 
         # make y axis invisible
-        # ax.set_yticklabels([])
-        # ax.tick_params(axis='y', which='both', length=0)
         ax.get_yaxis().set_visible(False)
 
         if xaxis_show:
@@ -1438,6 +1570,117 @@ class CoMut:
 
         self.axes[name] = ax
         return ax
+
+
+    def _plot_side_error_data(self, ax, name, data, mapping, position, xtick_fontdict, xtick_show, xaxis_show,
+                              xlabel, xlabel_fontsize, xlabel_fontweight, xlabel_rotation, y_padding):
+        '''Plot side bar plot on CoMut plot
+
+        Params:
+        -----------
+        ax: axis object
+            axis object on which to draw the graph.
+
+        data: pandas Dataframe
+            data from add_side_error_data
+
+        name: str
+            name from add_side_error_data
+
+        mapping: dict
+            mapping from add_side_error_data
+
+        position: str, left or right
+            position from add_side_error_data
+
+        xtick_fontdict: dict
+            xtick_fontdict from add_side_error_data
+
+        xtick_show: bool
+            xtick_show from add_side_error_data
+
+        xaxis_show: bool
+            xaxis_show from add_side_error_data
+
+        xlabel: str
+            xlabel from add_side_error_data
+
+        xlabel_fontsize: float
+            xlabel_fontsize from add_side_error_data
+
+        xlabel_fontweight: str
+            xlabel_fontweight from add_side_error_data
+
+        xlabel_rotation: float
+            xlabel_rotation from add_side_error_data
+
+        y_padding: float
+            y_padding from plot_comut
+
+        Returns:
+        -------
+        ax: axis object
+            The axis object on which the plot is drawn.'''
+
+        for subcategory in data["subcategory"].unique():
+            mask_sub = data["subcategory"]==subcategory
+            pos = mapping[subcategory][0]
+            col = mapping[subcategory][1]
+            ecol = mapping[subcategory][2]
+            els = mapping[subcategory][3]
+            elw = mapping[subcategory][4]
+            fmt = mapping[subcategory][5]
+
+            eb = ax.errorbar(x=data.loc[mask_sub]["value"], y=data.loc[mask_sub]["Y"] + 0.5 + pos,
+                             xerr=np.abs(data.loc[mask_sub][['low', 'high']].values.T - data.loc[mask_sub]["value"].values),
+                             fmt=fmt, color=col, ecolor=ecol, elinewidth=elw, capsize=0)
+
+        # reverse x axis if position is to the left
+        if position == 'left':
+            ax.set_xlim(xlim[::-1])
+
+        for loc in ['top', 'right', 'left']:
+            ax.spines[loc].set_visible(False)
+
+        # set xlabel
+        ax.set_xlabel(xlabel)
+
+        # customize xtick labels
+        if xtick_show:
+            x_max = round(data["high"].max(), 1)
+            x_min = round(data["low"].min(), 1)
+            if x_min < 1 and x_max > 1:
+                xticks = [x_min, 1, x_max]
+            elif x_min < 1:
+                xticks = [x_min, 1]
+            elif x_max > 1:
+                xticks = [1, x_max]
+            else:
+                xticks = [1]
+
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticks, fontdict=xtick_fontdict, style="normal", rotation=0)
+        else:
+            ax.set_xticklabels([])
+
+        # set the xlabel
+        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize, fontweight=xlabel_fontweight, rotation=xlabel_rotation)
+
+        # make y axis invisible
+        ax.get_yaxis().set_visible(False)
+
+        if xaxis_show:
+            # despine all axes except bottom
+            for loc in ['top', 'right', 'left']:
+                ax.spines[loc].set_visible(False)
+        else:
+            # despine all axes except left
+            for loc in ['top', 'right', 'bottom', 'left']:
+                ax.spines[loc].set_visible(False)
+
+        self.axes[name] = ax
+        return ax
+
 
     def _plot_data_on_axis(self, ax, plot_name, plot_type, plot_params, data, x_padding, y_padding, tri_padding):
         '''Wrapper function for plotting data on an axis
@@ -1650,7 +1893,8 @@ class CoMut:
 
     def plot_comut(self, fig=None, spec=None, x_padding=0, y_padding=0,
                    tri_padding=0, heights=None, hspace=0.2, subplot_hspace=None,
-                   widths=None, wspace=0.2, structure=None, figsize=(10,6)):
+                   widths=None, wspace=0.2, shadow_width_left=None,
+                   structure=None, figsize=(10,6)):
         '''plot the CoMut object
 
         Params:
@@ -1702,6 +1946,10 @@ class CoMut:
         wspace: float, default 0.2
             The distance between different plots in the x-direction
             (ie side bar plots)
+
+        shadow_width_left: float, default=None
+            If not None, width of the shadow subplot positioned left of the central CoMut plot. Useful
+            for controlling space for y-axis labels.
 
         structure: list-like
             List containing desired CoMut structure. Must be provided
@@ -1774,6 +2022,13 @@ class CoMut:
         else:
             _, comut_idx = self._get_default_widths_and_comut_loc()
 
+        if shadow_width_left is not None:
+            shadow_idx_left = comut_idx
+            comut_idx += 1
+            widths.insert(shadow_idx_left, shadow_width_left)
+        else:
+            shadow_idx_left = None
+
         # number of cols is equal to size of widths
         num_cols = len(widths)
 
@@ -1828,13 +2083,25 @@ class CoMut:
                     if position == 'left':
                         sideplot_idx = comut_idx - left_idx
                         left_idx += 1
+                        if sideplot_idx == shadow_idx_left:
+                            sideplot_idx -= 1
+                            left_idx += 1
                     elif position == 'right':
                         sideplot_idx = comut_idx + right_idx
                         right_idx += 1
 
                     # sideplots are paired with central CoMut plot
                     side_ax = fig.add_subplot(spec[num_subplots - i - 1, sideplot_idx])
-                    side_ax = self._plot_side_bar_data(side_ax, side_name, y_padding=y_padding, **side_plot)
+                    side_plot_type = side_plot["type"]
+                    side_plot_params = {k:v for k,v in side_plot.items() if k!="type"}
+
+                    if side_plot_type=="bar":
+                        side_ax = self._plot_side_bar_data(side_ax, side_name, y_padding=y_padding, **side_plot_params)
+                    elif side_plot_type=="error":
+                        side_ax = self._plot_side_error_data(side_ax, side_name, y_padding=y_padding, **side_plot_params)
+                    else:
+                        raise ValueError("Urecognized type {} of side plot."
+                                         " Choose either 'bar' or 'error'".format(side_plot_type))
 
                     # force side axis to match paired axis. Avoiding sharey in case
                     # side bar needs different ticklabels
