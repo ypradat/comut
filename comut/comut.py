@@ -2171,7 +2171,7 @@ class CoMut:
             Order of values in the legend. By default, values are
             sorted alphabetically.
 
-        ignored_values: list-list
+        ignored_values: list-like
             List of values ignored by the legend. Defaults to
             ['Not Available', 'Absent'].
 
@@ -2215,8 +2215,11 @@ class CoMut:
             raise ValueError('add_axis_legend is not valid for continuous data.')
 
         # extract current handles and labels on axis
-        handles, labels = self.axes[name].get_legend_handles_labels()
-        handle_lookup = dict(zip(labels, handles))
+        if handles is not None and labels is not None:
+            handle_lookup = dict(zip(labels, handles))
+        else:
+            handles, labels = self.axes[name].get_legend_handles_labels()
+            handle_lookup = dict(zip(labels, handles))
 
         # replace borde_white values with a white patch and black border
         for patch_name in border_white:
@@ -2247,7 +2250,8 @@ class CoMut:
 
     def add_unified_legend(self, axis_name=None, border_white=None, headers=True,
                            rename=None, bbox_to_anchor=(1, 1), ignored_values=None,
-                           ignored_plots=None, frameon=False, **legend_kwargs):
+                           ignored_plots=None, frameon=False, handles_more=None, labels_more=None,
+                           titles_more=None, **legend_kwargs):
         '''Add a unified legend to the CoMut plot
 
         This combines all the various legends into a one column master legend.
@@ -2285,6 +2289,15 @@ class CoMut:
         frameon: bool, default False
             Whether a frame should be drawn around the legend
 
+        handles_more: list-like
+            List of lists new handles if any.
+
+        labels_more: list-like
+            List of lists new labels if any.
+
+        titles_more: list-like
+            List of lists new titles if any.
+
         legend_kwargs: kwargs
             Other kwargs to pass to ax.legend().
 
@@ -2304,6 +2317,15 @@ class CoMut:
 
         if ignored_plots is None:
             ignored_plots = []
+
+        if handles_more is None:
+            handles_more = []
+
+        if labels_more is None:
+            labels_more = []
+
+        if titles_more is None:
+            titles_more = []
 
         # store labels and patches
         legend_labels = []
@@ -2357,6 +2379,37 @@ class CoMut:
 
                     # rename labels
                     legend_labels = [rename.get(label, label) for label in legend_labels]
+
+        for handles, labels, title in zip(handles_more, labels_more, titles_more):
+            # create label-patch dict
+            handle_lookup = dict(zip(labels, handles))
+
+            # delete ignored categories
+            for value in ignored_values:
+                if value in handle_lookup:
+                    del handle_lookup[value]
+
+            # border the white patches
+            for patch_name in border_white:
+                if patch_name in handle_lookup:
+                    handle_lookup[patch_name] = patches.Patch(facecolor='white', edgecolor='black',
+                                                              label=patch_name)
+
+            # add legend subheader for nonindicator data
+            if headers:
+                legend_labels.append(title)
+                legend_patches.append(patches.Patch(color='none', alpha=0))
+
+            # add plot labels and legends
+            legend_labels += list(handle_lookup.keys())
+            legend_patches += list(handle_lookup.values())
+
+            # add a spacer patch
+            legend_labels.append('')
+            legend_patches.append(patches.Patch(color='white', alpha=0))
+
+            # rename labels
+            legend_labels = [rename.get(label, label) for label in legend_labels]
 
         # add to the top axis if no axis is given
         if axis_name is None:

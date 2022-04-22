@@ -11,6 +11,7 @@ import palettable
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 
 from comut import comut
 
@@ -53,7 +54,7 @@ def load_mapping():
 
 
 def render_plot(comut_object, figsize=(10,3), x_padding=0.04, y_padding=0.04, tri_padding=0.03,
-                hspace=0.2, wspace=0.2, legend_ncol=1, legend_axis_name=None, legend_ignored_plots=None, **kwargs):
+                hspace=0.2, wspace=0.2, **kwargs):
     comut_object.plot_comut(x_padding=x_padding,
                             y_padding=y_padding,
                             tri_padding=tri_padding,
@@ -61,7 +62,6 @@ def render_plot(comut_object, figsize=(10,3), x_padding=0.04, y_padding=0.04, tr
                             hspace=hspace,
                             wspace=wspace,
                             **kwargs)
-    comut_object.add_unified_legend(ncol=legend_ncol, axis_name=legend_axis_name, ignored_plots=legend_ignored_plots)
 
 
 def save_plot(comut_object, filepath, dpi=300):
@@ -87,6 +87,7 @@ def test_comut_simple():
                                     ytick_style='normal', ytick_fontdict={"fontsize": 12})
 
     render_plot(comut_object=comut_test)
+    comut_test.add_unified_legend()
     save_plot(comut_test, filepath="tests/plots/comut_simple.svg")
 
 
@@ -118,6 +119,7 @@ def test_comut_simple():
 # 
 # 
 #     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
+#     comut_test.add_unified_legend()
 #     save_plot(comut_test, filepath="tests/plots/comut_design_1.svg")
 # 
 # 
@@ -157,7 +159,8 @@ def test_comut_simple():
 #                                  position="left", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
 #                                  stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
 # 
-#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25, legend_ncol=2)
+#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
+#     comut_test.add_unified_legend(ncol=2)
 #     save_plot(comut_test, filepath="tests/plots/comut_design_2.svg")
 # 
 # 
@@ -202,7 +205,8 @@ def test_comut_simple():
 #                                  position="left", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
 #                                  stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
 # 
-#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25, legend_ncol=2)
+#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
+#     comut_test.add_unified_legend(ncol=2)
 # 
 #     # edit individual axes
 #     comut_test.axes['Mutation type'].set_xticklabels([])
@@ -270,8 +274,8 @@ def test_comut_simple():
 #                                  position="right", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
 #                                  stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
 # 
-#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1],
-#                 legend_ncol=2, legend_axis_name="Mutated samples bis", shadow_width_left=0.7)
+#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1], shadow_width_left=0.7)
+#     comut_test.add_unified_legend(ncol=2, axis_name="Mutated sample bis")
 #     save_plot(comut_test, filepath="tests/plots/comut_design_4.svg")
 
 
@@ -315,9 +319,21 @@ def test_comut_design_5():
                                    position="right", mapping=mappings["err"], xtick_fontdict={"fontsize": 10},
                                    xlabel="Odds ratio", xlabel_rotation=0)
 
-    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1],
-                legend_ncol=2, legend_axis_name="Odds ratio", shadow_width_left=0.7,
-                legend_ignored_plots=["Biopsy site"])
+
+    # replace legend of Mutation type
+    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1], shadow_width_left=0.7)
+
+    green_star = mlines.Line2D([], [], color='limegreen', marker='*', linestyle='None', markersize=10)
+    blue_star = mlines.Line2D([], [], color='royalblue', marker='*', linestyle='None', markersize=10)
+    handles = [green_star, blue_star]
+    labels = ["Tier1", "Tier2"]
+
+    handles_more = [handles]
+    labels_more = [labels]
+    titles_more = ["Resistances"]
+
+    comut_test.add_unified_legend(ncol=2, axis_name="Odds ratio", ignored_plots=["Mutation type"],
+                                  handles_more=handles_more, labels_more=labels_more, titles_more=titles_more)
 
     comut_test.axes['Odds ratio'].axvline(1, color = 'black', linestyle = 'dotted', linewidth = 2)
     comut_test.axes['Odds ratio'].set_xscale('log')
