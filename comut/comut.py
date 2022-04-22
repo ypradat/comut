@@ -1293,6 +1293,7 @@ class CoMut:
                 - 'els' line style of the edge line
                 - 'elw' line width of the edge line
                 - 'fmt' format of the central marker
+                - 'ms' marker size
 
         xtick_fontdict: dict, default=None
             Dictionary controlling the appearance of x axis tick labels.
@@ -1355,13 +1356,6 @@ class CoMut:
 
         # make default mapping
         if mapping is None:
-            poss = [-3, -1, 1, 3]
-            cols = ['red', 'limegreen', 'black', 'royalblue']
-            ecols = ['lightsalmon', 'palegreen', 'lightgray', 'lightskyblue']
-            elss = ['-', '-', '-', '-']
-            elws = [1, 3, 3 ,3]
-            fmts = ['o', 'o', 'o', 'o']
-
             subcategories = list(data["subcategory"].unique())
             n_subcategories = len(subcategories)
             vivid_10 =  palettable.cartocolors.qualitative.Vivid_10.mpl_colors
@@ -1374,7 +1368,8 @@ class CoMut:
                 els = "-"
                 elw = 1
                 fmt = "o"
-                mapping[subcategory] = [pos, col, ecol, els, elw, fmt]
+                ms = 6
+                mapping[subcategory] = [pos, col, ecol, els, elw, fmt, ms]
 
 
         # add Y for positioning bars
@@ -1630,10 +1625,11 @@ class CoMut:
             els = mapping[subcategory][3]
             elw = mapping[subcategory][4]
             fmt = mapping[subcategory][5]
+            ms = mapping[subcategory][6]
 
             eb = ax.errorbar(x=data.loc[mask_sub]["value"], y=data.loc[mask_sub]["Y"] + 0.5 + pos,
                              xerr=np.abs(data.loc[mask_sub][['low', 'high']].values.T - data.loc[mask_sub]["value"].values),
-                             fmt=fmt, color=col, ecolor=ecol, elinewidth=elw, capsize=0)
+                             fmt=fmt, color=col, ecolor=ecol, elinewidth=elw, ms=ms, capsize=0)
 
         # reverse x axis if position is to the left
         if position == 'left':

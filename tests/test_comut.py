@@ -46,8 +46,8 @@ def load_mapping():
     mappings["bur"] = {'Nonsynonymous': vivid_10[8], 'Synonymous':purp_7(0.5)}
     mappings["frq"] = {"Mutated samples": "darkgrey"}
     mappings["sym"] = {"resistance": "black", "sensitivity": "gold"}
-    mappings["err"] = {"tier1": [0.2, 'limegreen', 'palegreen', '-', 2, 'o'],
-                       "tier2": [-0.2, 'royalblue', 'lightskyblue', '-', 2, 'o']}
+    mappings["err"] = {"tier1": [0.2, 'limegreen', 'palegreen', '-', 2, 'o', 6],
+                       "tier2": [-0.2, 'royalblue', 'lightskyblue', '-', 2, 'o', 6]}
 
     return mappings
 
