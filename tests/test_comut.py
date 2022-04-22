@@ -53,7 +53,7 @@ def load_mapping():
 
 
 def render_plot(comut_object, figsize=(10,3), x_padding=0.04, y_padding=0.04, tri_padding=0.03,
-                hspace=0.2, wspace=0.2, legend_ncol=1, legend_axis_name=None, **kwargs):
+                hspace=0.2, wspace=0.2, legend_ncol=1, legend_axis_name=None, legend_ignored_plots=None, **kwargs):
     comut_object.plot_comut(x_padding=x_padding,
                             y_padding=y_padding,
                             tri_padding=tri_padding,
@@ -61,7 +61,7 @@ def render_plot(comut_object, figsize=(10,3), x_padding=0.04, y_padding=0.04, tr
                             hspace=hspace,
                             wspace=wspace,
                             **kwargs)
-    comut_object.add_unified_legend(ncol=legend_ncol, axis_name=legend_axis_name)
+    comut_object.add_unified_legend(ncol=legend_ncol, axis_name=legend_axis_name, ignored_plots=legend_ignored_plots)
 
 
 def save_plot(comut_object, filepath, dpi=300):
@@ -316,11 +316,13 @@ def test_comut_design_5():
                                    xlabel="Odds ratio", xlabel_rotation=0)
 
     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1],
-                legend_ncol=2, legend_axis_name="Odds ratio", shadow_width_left=0.7)
+                legend_ncol=2, legend_axis_name="Odds ratio", shadow_width_left=0.7,
+                legend_ignored_plots=["Biopsy site"])
 
     comut_test.axes['Odds ratio'].axvline(1, color = 'black', linestyle = 'dotted', linewidth = 2)
     comut_test.axes['Odds ratio'].set_xscale('log')
     comut_test.axes['Odds ratio'].set_xticks([0.2, 1, 5])
     comut_test.axes['Odds ratio'].set_xticklabels([0.2, 1, 5])
+
 
     save_plot(comut_test, filepath="tests/plots/comut_design_5.svg")

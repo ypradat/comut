@@ -2247,7 +2247,7 @@ class CoMut:
 
     def add_unified_legend(self, axis_name=None, border_white=None, headers=True,
                            rename=None, bbox_to_anchor=(1, 1), ignored_values=None,
-                           frameon=False, **legend_kwargs):
+                           ignored_plots=None, frameon=False, **legend_kwargs):
         '''Add a unified legend to the CoMut plot
 
         This combines all the various legends into a one column master legend.
@@ -2279,6 +2279,9 @@ class CoMut:
             List of ignored values. These categories will be ignored by
             the legend. Defaults to ['Absent', 'Not Available'].
 
+        ignored_plots: list-like
+            List of ignored plots. Legends for these plots will not be drawn.
+
         frameon: bool, default False
             Whether a frame should be drawn around the legend
 
@@ -2299,6 +2302,9 @@ class CoMut:
         if ignored_values is None:
             ignored_values = ['Absent', 'Not Available']
 
+        if ignored_plots is None:
+            ignored_plots = []
+
         # store labels and patches
         legend_labels = []
         legend_patches = []
@@ -2309,45 +2315,48 @@ class CoMut:
 
         # extract the legend information for each plot and add to storage
         for name, plot_data in zip(plot_names, plot_data_list):
-            axis = self.axes[name]
-            plot_type = plot_data['type']
+            if name in ignored_plots:
+                pass
+            else:
+                axis = self.axes[name]
+                plot_type = plot_data['type']
 
-            if plot_type in ['categorical', 'bar', 'indicator']:
-                # nonstacked bar charts don't need legend labels
-                if plot_type == 'bar' and not plot_data['stacked']:
-                    continue
+                if plot_type in ['categorical', 'bar', 'indicator']:
+                    # nonstacked bar charts don't need legend labels
+                    if plot_type == 'bar' and not plot_data['stacked']:
+                        continue
 
-                handles, labels = axis.get_legend_handles_labels()
+                    handles, labels = axis.get_legend_handles_labels()
 
-                # create label-patch dict
-                handle_lookup = dict(zip(labels, handles))
+                    # create label-patch dict
+                    handle_lookup = dict(zip(labels, handles))
 
-                # delete ignored categories
-                for value in ignored_values:
-                    if value in handle_lookup:
-                        del handle_lookup[value]
+                    # delete ignored categories
+                    for value in ignored_values:
+                        if value in handle_lookup:
+                            del handle_lookup[value]
 
-                # border the white patches
-                for patch_name in border_white:
-                    if patch_name in handle_lookup:
-                        handle_lookup[patch_name] = patches.Patch(facecolor='white', edgecolor='black',
-                                                                  label=patch_name)
+                    # border the white patches
+                    for patch_name in border_white:
+                        if patch_name in handle_lookup:
+                            handle_lookup[patch_name] = patches.Patch(facecolor='white', edgecolor='black',
+                                                                      label=patch_name)
 
-                # add legend subheader for nonindicator data
-                if plot_type != 'indicator' and headers:
-                    legend_labels.append(name)
-                    legend_patches.append(patches.Patch(color='none', alpha=0))
+                    # add legend subheader for nonindicator data
+                    if plot_type != 'indicator' and headers:
+                        legend_labels.append(name)
+                        legend_patches.append(patches.Patch(color='none', alpha=0))
 
-                # add plot labels and legends
-                legend_labels += list(handle_lookup.keys())
-                legend_patches += list(handle_lookup.values())
+                    # add plot labels and legends
+                    legend_labels += list(handle_lookup.keys())
+                    legend_patches += list(handle_lookup.values())
 
-                # add a spacer patch
-                legend_labels.append('')
-                legend_patches.append(patches.Patch(color='white', alpha=0))
+                    # add a spacer patch
+                    legend_labels.append('')
+                    legend_patches.append(patches.Patch(color='white', alpha=0))
 
-                # rename labels
-                legend_labels = [rename.get(label, label) for label in legend_labels]
+                    # rename labels
+                    legend_labels = [rename.get(label, label) for label in legend_labels]
 
         # add to the top axis if no axis is given
         if axis_name is None:
