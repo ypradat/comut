@@ -1229,7 +1229,7 @@ class CoMut:
         if paired_plot['type'] != 'categorical':
             raise ValueError('Side plots can only be added to categorical data')
 
-k       # set index to categories
+        # set index to categories
         data_indexed = data.set_index('category')
 
         # check that the categories match paired plot's categories
