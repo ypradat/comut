@@ -448,7 +448,7 @@ class CoMut:
         self._plots[name] = plot_data
         return None
 
-    def add_scatter_data(self, data, paired_name=None, name=None, mapping=None, marker="*", s=25):
+    def add_scatter_data(self, data, paired_name=None, name=None, mapping=None, marker="*", markersize=10):
         '''Add a sample level symbol data to the CoMut object
 
         Params:
@@ -466,13 +466,13 @@ class CoMut:
             defaults to the integer index of the plot being added.
 
         mapping: dict
-            A mapping of column to color. Dictionary should map values of column `value`
-            to color (str).
+            A mapping of column to colors. Dictionary should map values of column `value`
+            to a tuple of colors (str). First and second colors are marker main and alternative colors.
 
         marker: str, default="*"
             Marker for the scatter plot.
 
-        s: float, default=25
+        markersize: float, default=10
             Marker size.
 
         Returns:
@@ -504,7 +504,7 @@ class CoMut:
             # define default colors
             default_cmap = self._get_default_categorical_cmap(len(unique_values))
             for i, value in enumerate(unique_values):
-                mapping[value] = default_cmap[i]
+                mapping[value] = (default_cmap[i], default_cmap[i])
 
         elif isinstance(mapping, dict):
             # check that all alt types present in data are in mapping
@@ -524,7 +524,7 @@ class CoMut:
         data = data.merge(data_paired_Y, how="left", on="category")
 
         # store plot data
-        plot_data = {'data': data, 'mapping': mapping, 'marker': marker, 's': s, 'type': 'scatter'}
+        plot_data = {'data': data, 'mapping': mapping, 'marker': marker, 'markersize': markersize, 'type': 'scatter'}
 
         self._over_plots[paired_name][name] = plot_data
         return None
@@ -1025,10 +1025,12 @@ class CoMut:
         self.axes[name] = ax
         return ax
 
-    def _plot_scatter_data(self, ax, data, name, mapping, marker, s):
-        for value, color in mapping.items():
+    def _plot_scatter_data(self, ax, data, name, mapping, marker, markersize):
+        for value, (color, coloralt) in mapping.items():
             mask_data = data["value"]==value
-            ax.scatter(data.loc[mask_data]["X"]+0.5, data.loc[mask_data]["Y"]+0.5, marker=marker, s=s, color=color)
+            ax.plot(data.loc[mask_data]["X"]+0.5, data.loc[mask_data]["Y"]+0.5, marker=marker, markersize=markersize,
+                    color=color, markerfacecoloralt=coloralt, linestyle='', markeredgecolor='None', fillstyle='left',
+                    markeredgewidth=0)
 
         return ax
 
@@ -1227,7 +1229,7 @@ class CoMut:
         if paired_plot['type'] != 'categorical':
             raise ValueError('Side plots can only be added to categorical data')
 
-        # set index to categories
+k       # set index to categories
         data_indexed = data.set_index('category')
 
         # check that the categories match paired plot's categories
@@ -1725,8 +1727,9 @@ class CoMut:
         elif plot_type == "scatter":
             mapping = plot_params['mapping']
             marker = plot_params['marker']
-            s = plot_params['s']
-            ax = self._plot_scatter_data(ax=ax, data=data, name=plot_name, mapping=mapping, marker=marker, s=s)
+            markersize = plot_params['markersize']
+            ax = self._plot_scatter_data(ax=ax, data=data, name=plot_name, mapping=mapping, marker=marker,
+                                         markersize=markersize)
 
         elif plot_type == 'bar':
             mapping = plot_params['bar_options']

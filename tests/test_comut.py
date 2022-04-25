@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 @modified: Apr 14 2022
-@created: Apr 14 2022
+@created: Apr 25 2022
 @author: Yoann Pradat
 
 Tests for comut module.
@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
 
 from comut import comut
 
@@ -23,14 +24,17 @@ def load_data():
     dfs_data["bur"] = pd.read_table("examples/tutorial_data/tutorial_mutation_burden.tsv")
     dfs_data["frq"] = pd.read_table("examples/tutorial_data/tutorial_mutated_samples.tsv")
     dfs_data["sym"] = pd.read_table("examples/tutorial_data/tutorial_symbols.tsv")
+    dfs_data["err"] = pd.read_table("examples/tutorial_data/tutorial_error_bars.tsv")
 
-    df_err = pd.DataFrame({"category": ["BRAF", "BRAF", "TP53"],
-                           "subcategory": ["tier1", "tier2", "tier1"],
-                           "value": [1.5, 1.3, 2],
-                           "low": [0.9, 0.6, 1.3],
-                           "high": [2, 2.5, 3.3]})
+    df_stk = pd.DataFrame({"category": ["BRAF", "NF1", "TP53", "CDKN2A", "NRAS"],
+                           "gene 1 M1 tier1": [20, 2, 0, 0, 0],
+                           "gene 1 M2 tier1": [2, 0, 0, 0, 0],
+                           "gene 1 M1 tier2": [0, 0, 16, 0, 0],
+                           "gene 1 M2 tier2": [0, 8, 15, 0, 0],
+                           "gene 2 M1 tier2": [3, 12, 5, 0, 0],
+                           "None": [25, 28, 14, 50, 50]})
 
-    dfs_data["err"] = df_err
+    dfs_data["stk"] = df_stk
 
     return dfs_data
 
@@ -45,10 +49,14 @@ def load_mapping():
     mappings["pur"] = purp_7
     mappings["bio"] = {"Kidney": vivid_10[2], "Liver": vivid_10[4], "Lung": vivid_10[6], "Lymph Node": vivid_10[8]}
     mappings["bur"] = {'Nonsynonymous': vivid_10[8], 'Synonymous':purp_7(0.5)}
-    mappings["frq"] = {"Mutated samples": "darkgrey"}
-    mappings["sym"] = {"resistance": "black", "sensitivity": "gold"}
+    mappings["frq"] = {"Mutated samples": "lightgrey"}
+    mappings["sym"] = {"resistance": ("black", "red"), "sensitivity": ("gold", "gold")}
     mappings["err"] = {"tier1": [0.2, 'limegreen', 'palegreen', '-', 2, 'o', 6],
                        "tier2": [-0.2, 'royalblue', 'lightskyblue', '-', 2, 'o', 6]}
+    mappings["stk"] = {"gene 1 M1 tier1": vivid_10[0], "gene 1 M1 tier2": vivid_10[0],
+                       "gene 1 M2 tier1": vivid_10[3], "gene 1 M2 tier2": vivid_10[3],
+                       "gene 2 M1 tier2": vivid_10[6], "None": "lightgrey"}
+    mappings["stk_edges"] = {"tier1": 'limegreen', "tier2": 'royalblue', "None": None}
 
     return mappings
 
@@ -164,7 +172,6 @@ def test_comut_simple():
 #     save_plot(comut_test, filepath="tests/plots/comut_design_2.svg")
 # 
 # 
-# 
 # def test_comut_design_3():
 #     dfs_data = load_data()
 #     mappings = load_mapping()
@@ -183,7 +190,7 @@ def test_comut_simple():
 # 
 # 
 #     comut_test.add_scatter_data(data=dfs_data["sym"], name='Resistances', paired_name='Mutation type',
-#                                 mapping=mappings["sym"], marker="*", s=25)
+#                                 mapping=mappings["sym"], marker="*", markersize=10)
 # 
 # 
 #     comut_test.add_continuous_data(data=dfs_data["pur"], name='Purity',
@@ -279,7 +286,71 @@ def test_comut_simple():
 #     save_plot(comut_test, filepath="tests/plots/comut_design_4.svg")
 
 
-def test_comut_design_5():
+# def test_comut_design_5():
+#     dfs_data = load_data()
+#     mappings = load_mapping()
+# 
+#     # columns ordering
+#     cols = ["Sample%d" % i for i in range(1,51)]
+# 
+#     # rows ordering
+#     rows = ['CDKN2A', 'TP53', 'NF1', 'NRAS', 'BRAF']
+# 
+#     comut_test = comut.CoMut()
+#     comut_test.samples = cols
+#     comut_test.add_categorical_data(data=dfs_data["mut"], name='Mutation type', category_order=rows,
+#                                     mapping=mappings["mut"], xtick_show=True, xtick_fontdict={"fontsize": 8},
+#                                     ytick_style='italic', ytick_fontdict={"fontsize": 12})
+# 
+# 
+#     comut_test.add_continuous_data(data=dfs_data["pur"], name='Purity',
+#                                    mapping=mappings["pur"], xtick_show=False,
+#                                    ytick_style='normal', ytick_fontdict={"fontsize": 12})
+# 
+# 
+#     comut_test.add_categorical_data(data=dfs_data["bio"], name='Biopsy site',
+#                                     mapping=mappings["bio"], xtick_show=False,
+#                                     ytick_style='normal', ytick_fontdict={"fontsize": 12})
+# 
+# 
+#     comut_test.add_bar_data(data=dfs_data["bur"], name='Mutation burden',
+#                             mapping=mappings["bur"], ytick_fontdict={"fontsize": 12}, stacked=True,
+#                             ylabel="Nosynon.\nMutations", ylabel_rotation=90)
+# 
+# 
+#     comut_test.add_side_bar_data(data=dfs_data["frq"], paired_name='Mutation type', name="Mutated samples",
+#                                  position="left", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
+#                                  stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
+# 
+#     comut_test.add_side_error_data(data=dfs_data["err"], paired_name='Mutation type', name="Odds ratio",
+#                                    position="right", mapping=mappings["err"], xtick_fontdict={"fontsize": 10},
+#                                    xlabel="Odds ratio", xlabel_rotation=0)
+# 
+# 
+#     # replace legend of Mutation type
+#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1], shadow_width_left=0.7)
+# 
+#     green_star = mlines.Line2D([], [], color='limegreen', marker='*', linestyle='None', markersize=10)
+#     blue_star = mlines.Line2D([], [], color='royalblue', marker='*', linestyle='None', markersize=10)
+#     handles = [green_star, blue_star]
+#     labels = ["Tier1", "Tier2"]
+# 
+#     handles_more = [handles]
+#     labels_more = [labels]
+#     titles_more = ["Resistances"]
+# 
+#     comut_test.add_unified_legend(ncol=2, axis_name="Odds ratio", ignored_plots=["Mutation type"],
+#                                   handles_more=handles_more, labels_more=labels_more, titles_more=titles_more)
+# 
+#     comut_test.axes['Odds ratio'].axvline(1, color = 'black', linestyle = 'dotted', linewidth = 2)
+#     comut_test.axes['Odds ratio'].set_xscale('log')
+#     comut_test.axes['Odds ratio'].set_xticks([0.2, 1, 5])
+#     comut_test.axes['Odds ratio'].set_xticklabels([0.2, 1, 5])
+# 
+#     save_plot(comut_test, filepath="tests/plots/comut_design_5.svg")
+
+
+def test_comut_design_6():
     dfs_data = load_data()
     mappings = load_mapping()
 
@@ -319,26 +390,90 @@ def test_comut_design_5():
                                    position="right", mapping=mappings["err"], xtick_fontdict={"fontsize": 10},
                                    xlabel="Odds ratio", xlabel_rotation=0)
 
+    comut_test.add_side_bar_data(data=dfs_data["stk"], paired_name='Mutation type', name="Stacked bars", stacked=True,
+                                 position="right", mapping=mappings["stk"], xtick_fontdict={"fontsize": 10},
+                                 xlabel="Alterations\nconferring resistance", xlabel_fontsize=10, xlabel_rotation=0)
+
 
     # replace legend of Mutation type
-    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1], shadow_width_left=0.7)
+    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1,1.5], shadow_width_left=0.7)
 
+    handles_more = []
+    labels_more = []
+    titles_more = []
+
+    # legend for stars
     green_star = mlines.Line2D([], [], color='limegreen', marker='*', linestyle='None', markersize=10)
     blue_star = mlines.Line2D([], [], color='royalblue', marker='*', linestyle='None', markersize=10)
     handles = [green_star, blue_star]
     labels = ["Tier1", "Tier2"]
 
-    handles_more = [handles]
-    labels_more = [labels]
-    titles_more = ["Resistances"]
 
-    comut_test.add_unified_legend(ncol=2, axis_name="Odds ratio", ignored_plots=["Mutation type"],
+    handles_more.append(handles)
+    labels_more.append(labels)
+    titles_more.append("Resistances")
+
+    # legend for stacked bars
+    labels = [label for label, _ in mappings["stk"].items()]
+    colors = [color for _, color in mappings["stk"].items()]
+    df_lc = pd.DataFrame({"label": labels, "color": colors})
+    df_lc["label"] = df_lc["label"].apply(lambda x: x.split("tier")[0].strip())
+    df_lc = df_lc.drop_duplicates(subset=["label"], keep="first")
+
+    handles = [mpatches.Patch(color=color) for color in df_lc["color"]]
+    labels = [label for label in df_lc["label"]]
+
+    handles_more.append(handles)
+    labels_more.append(labels)
+    titles_more.append("Alterations")
+
+    comut_test.add_unified_legend(ncol=2, axis_name="Stacked bars", ignored_plots=["Mutation type"],
                                   handles_more=handles_more, labels_more=labels_more, titles_more=titles_more)
 
-    comut_test.axes['Odds ratio'].axvline(1, color = 'black', linestyle = 'dotted', linewidth = 2)
-    comut_test.axes['Odds ratio'].set_xscale('log')
-    comut_test.axes['Odds ratio'].set_xticks([0.2, 1, 5])
-    comut_test.axes['Odds ratio'].set_xticklabels([0.2, 1, 5])
+    # edit individual axes
+    axis_name = "Stacked bars"
 
+    # set correct order for bars
+    df_stk = dfs_data["stk"].copy()
+    df_stk_indexed = df_stk.set_index('category')
+    df_stk_indexed = df_stk_indexed.reindex(comut_test._plots["Mutation type"]["data"].index)
+    df_stk_edges = pd.DataFrame(index=df_stk_indexed.index)
+    patterns = ["tier1", "tier2", "None"]
+    for pattern in patterns:
+        cols_pattern = [x for x in df_stk_indexed if x.endswith(pattern)]
+        df_stk_edges[pattern] = df_stk_indexed[cols_pattern].sum(axis=1)
 
-    save_plot(comut_test, filepath="tests/plots/comut_design_5.svg")
+    y_range = np.arange(0.5, len(df_stk_edges.index))
+    cum_bar_df = np.cumsum(df_stk_edges, axis=1)
+
+    # for each bar, calculate bottom and top of bar and plot
+    for i in range(len(cum_bar_df.columns)):
+        column = cum_bar_df.columns[i]
+        color = mappings["stk_edges"][column]
+        if color is not None:
+            if i == 0:
+                left = None
+                bar_data = cum_bar_df.loc[:, column]
+            else:
+                # calculate distance between previous and current column
+                prev_column = cum_bar_df.columns[i-1]
+                bar_data = cum_bar_df.loc[:, column] - cum_bar_df.loc[:, prev_column]
+
+                # previous column defines the "bottom" of the bars
+                left = cum_bar_df.loc[:, prev_column]
+
+            # mask not zero
+            mask_nz = bar_data!=0
+            if sum(mask_nz) > 0:
+                y_range_nz = y_range[mask_nz]
+                bar_data_nz = bar_data[mask_nz]
+
+                if left is not None:
+                    left_nz = left[mask_nz]
+                else:
+                    left_nz = None
+
+                comut_test.axes[axis_name].barh(y_range_nz, bar_data_nz, align='center', facecolor='none',
+                                                edgecolor=color, lw=2, left=left_nz)
+
+    save_plot(comut_test, filepath="tests/plots/comut_design_6.svg")
