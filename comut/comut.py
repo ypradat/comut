@@ -770,8 +770,8 @@ class CoMut:
         self._plots[name] = plot_data
         return None
 
-    def add_sample_indicators(self, data, name=None,
-                              plot_kwargs=None):
+    def add_sample_indicators(self, data, name=None, xtick_style='normal', xtick_fontdict=None,
+                              xtick_show=True, xtick_rotation=90, plot_kwargs=None):
         '''Add a line plot that indicates samples that share a characteristic
 
         Params:
@@ -784,6 +784,18 @@ class CoMut:
         name: str
             The name of the dataset being added. Used to references axes
             Defaults to the integer index of the plot being added.
+
+        xtick_style: str, default='normal', 'italic', 'oblique'
+            Tick style to be used for the x axis ticks (sample names).
+
+        xtick_fontdict: dict, default=None
+            Dictionary controlling the appearance of x axis tick labels (sample names).
+
+        xtick_show: bool, default=True
+            Set to False to hide completely x axis ticks and labels (sample names).
+
+        xtick_rotation: bool, default=90
+            Rotation in degrees of x axis ticks and labels (sample names).
 
         plot_kwargs: dict
             dict of kwargs to be passed to plt.plot during plotting. Defaults
@@ -835,7 +847,8 @@ class CoMut:
                 prev_group = assignment
 
         plot_data = {'data': data_indexed, 'plot_options': plot_kwargs,
-                     'type': 'indicator'}
+                     'xtick_style': xtick_style, 'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
+                     'xtick_rotation': xtick_rotation, 'type': 'indicator'}
 
         self._plots[name] = plot_data
         return None
