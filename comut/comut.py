@@ -2404,11 +2404,6 @@ class CoMut:
             # create label-patch dict
             handle_lookup = dict(zip(labels, handles))
 
-            # delete ignored categories
-            for value in ignored_values:
-                if value in handle_lookup:
-                    del handle_lookup[value]
-
             # border the white patches
             for patch_name in border_white:
                 if patch_name in handle_lookup:
