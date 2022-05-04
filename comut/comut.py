@@ -202,7 +202,7 @@ class CoMut:
                 else:
                     values = sample_category_data['value'].values
                     present_priorities = [v for v in values if v in priority]
-                    present_borders = [v for v in values if v in border]
+                    present_borders = [v for v in values if v in borders]
 
                     # just put 'Multiple' if no priorities or more than two
                     if len(present_priorities) == 0 or len(present_priorities) > 2:
