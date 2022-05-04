@@ -140,7 +140,7 @@ class CoMut:
 
     @classmethod
     def _parse_categorical_data(cls, data, category_order, sample_order,
-                                value_order, priority):
+                                value_order, priority, borders):
         '''Parses tidy dataframe into a gene x sample dataframe
         of tuples for plotting
 
@@ -160,6 +160,9 @@ class CoMut:
 
         priority: list-like
             priority from add_categorical_data
+
+        borders: list-like
+            borders from add_categorical_data
 
         Returns:
         --------
@@ -199,21 +202,22 @@ class CoMut:
                 else:
                     values = sample_category_data['value'].values
                     present_priorities = [v for v in values if v in priority]
+                    present_borders = [v for v in values if v in border]
 
                     # just put 'Multiple' if no priorities or more than two
                     if len(present_priorities) == 0 or len(present_priorities) > 2:
-                        parsed_data.loc[category, sample] = ('Multiple',)
+                        parsed_data.loc[category, sample] = tuple(['Multiple'] + present_borders)
 
                     # always plot a priority if present
                     elif len(present_priorities) == 1:
                         df_entry = present_priorities + ['Multiple']
                         sorted_df_entry = cls._sort_list_by_list(df_entry, value_order)
-                        parsed_data.loc[category, sample] = tuple(sorted_df_entry)
+                        parsed_data.loc[category, sample] = tuple(sorted_df_entry + present_borders)
 
                     # plot two priorities if present, ignoring others
                     elif len(present_priorities) == 2:
                         df_entry = cls._sort_list_by_list(present_priorities, value_order)
-                        parsed_data.loc[category, sample] = tuple(df_entry)
+                        parsed_data.loc[category, sample] = tuple(df_entry + present_borders)
 
         return parsed_data
 
@@ -435,7 +439,7 @@ class CoMut:
 
         # parse data into dataframe of tuples as required for plotting
         parsed_data = self._parse_categorical_data(data, category_order, self.samples,
-                                                   value_order, priority)
+                                                   value_order, priority, borders)
 
         # store plot data
         plot_data = {'data': parsed_data, 'patches_options': mapping,
@@ -665,7 +669,7 @@ class CoMut:
         # data is now essentially categorical, so use that to parse data
         category_order = list(norm_data['category'].drop_duplicates())
         parsed_data = self._parse_categorical_data(data=norm_data, category_order=category_order,
-                                             sample_order=self.samples, value_order=[], priority=[])
+                                             sample_order=self.samples, value_order=[], priority=[], borders=[])
 
         # store plot data
         plot_data = {'data': parsed_data, 'patches_options': dict_mapping,
