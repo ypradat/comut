@@ -2371,7 +2371,7 @@ class CoMut:
                     handles, labels = axis.get_legend_handles_labels()
 
                     # sort alphabetically
-                    handles_labels = [(l,h) for h, l in zip(labels, handles)]
+                    handles_labels = [(l,h) for l, h in zip(labels, handles)]
                     handles_labels = sorted(handles_labels, key=lambda x: x[0])
                     handles = [x[1] for x in handles_labels]
                     labels = [x[0] for x in handles_labels]
