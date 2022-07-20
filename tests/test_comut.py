@@ -23,6 +23,8 @@ def load_data():
     dfs_data["bio"] = pd.read_table("examples/tutorial_data/tutorial_biopsy_site.tsv")
     dfs_data["bur"] = pd.read_table("examples/tutorial_data/tutorial_mutation_burden.tsv")
     dfs_data["frq"] = pd.read_table("examples/tutorial_data/tutorial_mutated_samples.tsv")
+    dfs_data["frq_bis"] = dfs_data["frq"].copy()
+    dfs_data["frq_bis"]["Mutated samples bis"] = 0.5 * dfs_data["frq_bis"]["Mutated samples"]
     dfs_data["sym"] = pd.read_table("examples/tutorial_data/tutorial_symbols.tsv")
     dfs_data["err"] = pd.read_table("examples/tutorial_data/tutorial_error_bars.tsv")
 
@@ -50,6 +52,7 @@ def load_mapping():
     mappings["bio"] = {"Kidney": vivid_10[2], "Liver": vivid_10[4], "Lung": vivid_10[6], "Lymph Node": vivid_10[8]}
     mappings["bur"] = {'Nonsynonymous': vivid_10[8], 'Synonymous':purp_7(0.5)}
     mappings["frq"] = {"Mutated samples": "lightgrey"}
+    mappings["frq_bis"] = {"Mutated samples": "gold", "Mutated samples bis": "blue"}
     mappings["sym"] = {"resistance": ("black", "red"), "sensitivity": ("gold", "gold")}
     mappings["err"] = {"tier1": [0.2, 'limegreen', 'palegreen', '-', 2, 'o', 6],
                        "tier2": [-0.2, 'royalblue', 'lightskyblue', '-', 2, 'o', 6]}
@@ -129,47 +132,46 @@ def test_comut_simple():
 #     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
 #     comut_test.add_unified_legend()
 #     save_plot(comut_test, filepath="tests/plots/comut_design_1.svg")
-# 
-# 
-# def test_comut_design_2():
-#     dfs_data = load_data()
-#     mappings = load_mapping()
-# 
-#     # columns ordering
-#     cols = ["Sample%d" % i for i in range(1,51)]
-# 
-#     # rows ordering
-#     rows = ['CDKN2A', 'TP53', 'NF1', 'NRAS', 'BRAF']
-# 
-#     comut_test = comut.CoMut()
-#     comut_test.samples = cols
-#     comut_test.add_categorical_data(data=dfs_data["mut"], name='Mutation type', category_order=rows,
-#                                     mapping=mappings["mut"], xtick_show=True, xtick_fontdict={"fontsize": 8},
-#                                     ytick_style='italic', ytick_fontdict={"fontsize": 12})
-# 
-# 
-#     comut_test.add_continuous_data(data=dfs_data["pur"], name='Purity',
-#                                    mapping=mappings["pur"], xtick_show=False,
-#                                    ytick_style='normal', ytick_fontdict={"fontsize": 12})
-# 
-# 
-#     comut_test.add_categorical_data(data=dfs_data["bio"], name='Biopsy site',
-#                                     mapping=mappings["bio"], xtick_show=False,
-#                                     ytick_style='normal', ytick_fontdict={"fontsize": 12})
-# 
-# 
-#     comut_test.add_bar_data(data=dfs_data["bur"], name='Mutation burden',
-#                             mapping=mappings["bur"], ytick_fontdict={"fontsize": 12}, stacked=True,
-#                             ylabel="Nosynon.\nMutations", ylabel_rotation=90)
-# 
-# 
-#     comut_test.add_side_bar_data(data=dfs_data["frq"], paired_name='Mutation type', name="Mutated samples",
-#                                  position="left", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
-#                                  stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
-# 
-#     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
-#     comut_test.add_unified_legend(ncol=2)
-#     save_plot(comut_test, filepath="tests/plots/comut_design_2.svg")
+
+def test_comut_design_2():
+    dfs_data = load_data()
+    mappings = load_mapping()
+
+    # columns ordering
+    cols = ["Sample%d" % i for i in range(1,51)]
+
+    # rows ordering
+    rows = ['CDKN2A', 'TP53', 'NF1', 'NRAS', 'BRAF']
+
+    comut_test = comut.CoMut()
+    comut_test.samples = cols
+    comut_test.add_categorical_data(data=dfs_data["mut"], name='Mutation type', category_order=rows,
+                                    mapping=mappings["mut"], xtick_show=True, xtick_fontdict={"fontsize": 8},
+                                    ytick_style='italic', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_continuous_data(data=dfs_data["pur"], name='Purity',
+                                   mapping=mappings["pur"], xtick_show=False,
+                                   ytick_style='normal', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_categorical_data(data=dfs_data["bio"], name='Biopsy site',
+                                    mapping=mappings["bio"], xtick_show=False,
+                                    ytick_style='normal', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_bar_data(data=dfs_data["bur"], name='Mutation burden',
+                            mapping=mappings["bur"], ytick_fontdict={"fontsize": 12}, stacked=True,
+                            ylabel="Nosynon.\nMutations", ylabel_rotation=90)
+
+
+    comut_test.add_side_bar_data(data=dfs_data["frq"], paired_name='Mutation type', name="Mutated samples",
+                                 position="left", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
+                                 stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
+
+    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
+    comut_test.add_unified_legend(ncol=2)
+    save_plot(comut_test, filepath="tests/plots/comut_design_2.svg")
 # 
 # 
 # def test_comut_design_3():
@@ -477,3 +479,44 @@ def test_comut_design_6():
                                                 edgecolor=color, lw=2, left=left_nz)
 
     save_plot(comut_test, filepath="tests/plots/comut_design_6.svg")
+
+
+def test_comut_design_7():
+    dfs_data = load_data()
+    mappings = load_mapping()
+
+    # columns ordering
+    cols = ["Sample%d" % i for i in range(1,51)]
+
+    # rows ordering
+    rows = ['CDKN2A', 'TP53', 'NF1', 'NRAS', 'BRAF']
+
+    comut_test = comut.CoMut()
+    comut_test.samples = cols
+    comut_test.add_categorical_data(data=dfs_data["mut"], name='Mutation type', category_order=rows,
+                                    mapping=mappings["mut"], xtick_show=True, xtick_fontdict={"fontsize": 8},
+                                    ytick_style='italic', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_continuous_data(data=dfs_data["pur"], name='Purity',
+                                   mapping=mappings["pur"], xtick_show=False,
+                                   ytick_style='normal', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_categorical_data(data=dfs_data["bio"], name='Biopsy site',
+                                    mapping=mappings["bio"], xtick_show=False,
+                                    ytick_style='normal', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_bar_data(data=dfs_data["bur"], name='Mutation burden',
+                            mapping=mappings["bur"], ytick_fontdict={"fontsize": 12}, stacked=True,
+                            ylabel="Nosynon.\nMutations", ylabel_rotation=90)
+
+
+    comut_test.add_side_bar_data(data=dfs_data["frq_bis"], paired_name='Mutation type', name="Mutated samples",
+                                 position="left", mapping=mappings["frq_bis"], xtick_fontdict={"fontsize": 12},
+                                 stacked=False, xlabel="Mutated samples", xlabel_rotation=0)
+
+    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
+    comut_test.add_unified_legend(ncol=2)
+    save_plot(comut_test, filepath="tests/plots/comut_design_7.svg")

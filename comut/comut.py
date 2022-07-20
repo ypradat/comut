@@ -1165,7 +1165,8 @@ class CoMut:
 
     def add_side_bar_data(self, data, paired_name, name=None, position='right', mapping=None, stacked=False,
                           xtick_fontdict=None, xtick_show=True, xaxis_show=True, xlabel='', xlabel_fontsize=None,
-                          xlabel_fontweight=None, xlabel_rotation=None, bar_kwargs=None):
+                          xlabel_fontweight=None, xlabel_rotation=None, gap_between_groups=0.2, gap_within_groups=0.05,
+                          bar_kwargs=None):
         '''Add a side bar plot to the CoMut object
 
         Params:
@@ -1214,6 +1215,12 @@ class CoMut:
 
         xlabel_rotation: float, default=None
             The rotation of the label for the x axis.
+
+        gap_between_groups: float
+            gap in [0,1] between groups of bars
+
+        gap_within_groups: float
+            gap in [0,1] between bars from the same group
 
         bar_kwargs: dict
             kwargs to be passed to plt.barh during the process of plotting.
@@ -1272,8 +1279,9 @@ class CoMut:
         plot_data = {'data': data_indexed, 'mapping': mapping, 'stacked': stacked, 'position': position,
                      'xtick_fontdict': xtick_fontdict, 'xtick_show': xtick_show,
                      'xlabel': xlabel, 'xlabel_fontsize': xlabel_fontsize, 'xlabel_fontweight': xlabel_fontweight,
-                     'xlabel_rotation': xlabel_rotation, 'xaxis_show': xaxis_show, 'bar_kwargs': bar_kwargs,
-                     'type': 'bar'}
+                     'xlabel_rotation': xlabel_rotation, 'xaxis_show': xaxis_show,
+                     'gap_between_groups': gap_between_groups, 'gap_within_groups': gap_within_groups,
+                     'bar_kwargs': bar_kwargs, 'type': 'bar'}
 
         self._side_plots[paired_name][name] = plot_data
         return None
@@ -1456,7 +1464,8 @@ class CoMut:
         return self
 
     def _plot_side_bar_data(self, ax, name, data, mapping, position, stacked, xtick_fontdict, xtick_show, xaxis_show,
-                            xlabel, xlabel_fontsize, xlabel_fontweight, xlabel_rotation, y_padding, bar_kwargs):
+                            xlabel, xlabel_fontsize, xlabel_fontweight, xlabel_rotation, y_padding,
+                            gap_between_groups, gap_within_groups, bar_kwargs):
         '''Plot side bar plot on CoMut plot
 
         Params:
@@ -1503,6 +1512,12 @@ class CoMut:
         y_padding: float
             y_padding from plot_comut
 
+        gap_between_groups: float
+            gap_between_groups from add_side_bar_data
+
+        gap_within_groups: float
+            gap_within_groups from add_side_bar_data
+
         bar_kwargs: dict
             bar_kwargs from add_side_bar_data
 
@@ -1514,12 +1529,12 @@ class CoMut:
         # define y range, since the plot is rotated
         y_range = np.arange(0.5, len(data.index))
 
-        # if height not in bar_kwargs, set it
-        if 'height' not in bar_kwargs:
-            bar_kwargs['height'] = 1 - 2*y_padding
-
         # if stacked, calculate cumulative height of bars
         if stacked:
+            # if height not in bar_kwargs, set it
+            if 'height' not in bar_kwargs:
+                bar_kwargs['height'] = 1 - 2*y_padding
+
             cum_bar_df = np.cumsum(data, axis=1)
 
             # for each bar, calculate bottom and top of bar and plot
@@ -1544,10 +1559,17 @@ class CoMut:
 
         # plot unstacked bar
         else:
-            color = mapping[data.columns[0]]
-            ax.barh(y_range, data.iloc[:, 0],
-                    align='center', color=color, **bar_kwargs)
-            x_max = data.iloc[:,0].max()
+            n_bars = data.shape[1]
+            height = (1-gap_between_groups-(n_bars-1)*gap_within_groups)/n_bars
+
+            for i, col in enumerate(data.columns):
+                x_range = data[col]
+                color =  mapping[col]
+                y_range = -0.5 + gap_between_groups/2 + (i+0.5) * height + i * gap_within_groups + \
+                        np.arange(0.5, len(x_range))
+                ax.barh(y_range, x_range, align='center', color=color, height=height, **bar_kwargs)
+
+            x_max = data.max().max()
 
         # reverse x axis if position is to the left
         if position == 'left':
