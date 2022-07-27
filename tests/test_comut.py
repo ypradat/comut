@@ -518,5 +518,5 @@ def test_comut_design_7():
                                  stacked=False, xlabel="Mutated samples", xlabel_rotation=0)
 
     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
-    comut_test.add_unified_legend(ncol=2)
+    comut_test.add_unified_legend(ncol=2, labels_orders={"Biopsy site": ["Lung", "Lymph Node", "Liver", "Kidney"]})
     save_plot(comut_test, filepath="tests/plots/comut_design_7.svg")

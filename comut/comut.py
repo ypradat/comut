@@ -2293,7 +2293,7 @@ class CoMut:
     def add_unified_legend(self, axis_name=None, border_white=None, headers=True,
                            rename=None, bbox_to_anchor=(1, 1), ignored_values=None,
                            ignored_plots=None, frameon=False, handles_more=None, labels_more=None,
-                           titles_more=None, **legend_kwargs):
+                           titles_more=None, labels_orders={}, **legend_kwargs):
         '''Add a unified legend to the CoMut plot
 
         This combines all the various legends into a one column master legend.
@@ -2339,6 +2339,9 @@ class CoMut:
 
         titles_more: list-like
             List of lists new titles if any.
+
+        labels_orders: dict
+            Dict of lists where keys are axes names and values are lists of ordered labels for the axis.
 
         legend_kwargs: kwargs
             Other kwargs to pass to ax.legend().
@@ -2391,10 +2394,17 @@ class CoMut:
                         continue
 
                     handles, labels = axis.get_legend_handles_labels()
-
-                    # sort alphabetically
                     handles_labels = [(l,h) for l, h in zip(labels, handles)]
-                    handles_labels = sorted(handles_labels, key=lambda x: x[0])
+
+                    if name in labels_orders:
+                        # if order specified, sort by order given
+                        labels_order = labels_orders[name]
+                        labels_order_index = {l: i for i, l in enumerate(labels_order)}
+                        handles_labels = sorted(handles_labels, key=lambda x: labels_order_index[x[0]])
+                    else:
+                        # sort alphabetically
+                        handles_labels = sorted(handles_labels, key=lambda x: x[0])
+
                     handles = [x[1] for x in handles_labels]
                     labels = [x[0] for x in handles_labels]
 
