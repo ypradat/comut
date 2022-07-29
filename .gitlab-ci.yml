@@ -1,0 +1,24 @@
+image: "python:3.9"
+
+default:
+  tags:
+    - docker
+
+stages:
+  - test
+
+variables:
+  CODECOV_TOKEN: "a2bf5607-0af4-45bb-9de5-6e22385d3b2d"
+
+before_script:
+  - pip install .
+  - pip install pytest pytest-cov
+
+test: 
+  stage: test
+  script:
+    - make test
+    - bash <(curl -s https://codecov.io/bash)
+  only:
+    refs:
+      - master
