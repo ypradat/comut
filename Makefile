@@ -31,4 +31,4 @@ tags:
 test:
 	@echo "---------------Run prettypy tests-----------------"
 	$(PYTHON) -m pip install pytest pytest-cov
-	$(PYTEST) --cov-config=.coveragerc --cov-report xml:coverage.xml --cov . . 
+	$(PYTEST) --cov-config=.coveragerc --cov-report xml:coverage.xml --cov=comut tests/

@@ -14,12 +14,10 @@ log/
 __pycache__/
 *.pyc
 *.ycm_extra_conf.py
-*.coverage*
 
 # Python test
 *.pytest_cache
 *.coverage
-*.coveragerc
 coverage.xml
 *.egg-info/
 
