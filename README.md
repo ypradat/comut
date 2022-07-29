@@ -1,5 +1,6 @@
 # CoMut
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/gh/ypradat/comut/branch/master/graph/badge.svg?token=CQX2XVVU60)](https://codecov.io/gh/ypradat/comut)
 
 CoMut is a Python library for creating comutation plots to visualize genomic and phenotypic information.
 
