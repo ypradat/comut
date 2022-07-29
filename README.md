@@ -3,7 +3,7 @@
 
 CoMut is a Python library for creating comutation plots to visualize genomic and phenotypic information.
 
-![melanoma_comut](https://github.com/ypradat/comut/blob/master/examples/melanoma_comut.png)
+![melanoma_comut](examples/melanoma_comut.png)
 
 ## Installation
 
@@ -76,7 +76,7 @@ For the full code underlying these examples, see in `tests/test_comut`.
 
 Basic example. 
 
-![comut_design_1](https://github.com/ypradat/comut/blob/master/tests/plots/comut_design_1.svg)
+![comut_design_1](tests/plots/comut_design_1.svg)
 
 ### Example 2
 
@@ -84,31 +84,31 @@ As compared to example 1, star symbols are added on certain cells and percentage
 Observe that the star sometimes are composed of 2 colors. Additionally, xtick labels of the central plot have been
 hidden.
 
-![comut_design_2](https://github.com/ypradat/comut/blob/master/tests/plots/comut_design_2.svg)
+![comut_design_2](tests/plots/comut_design_2.svg)
 
 
 ### Example 3
 
 As compared to example 2, add a bar plot on the right.
 
-![comut_design_3](https://github.com/ypradat/comut/blob/master/tests/plots/comut_design_3.svg)
+![comut_design_3](tests/plots/comut_design_3.svg)
 
 
 ### Example 4
 
 As compared to example 3, replace the right bar plot by a right error bar plot.
 
-![comut_design_4](https://github.com/ypradat/comut/blob/master/tests/plots/comut_design_4.svg)
+![comut_design_4](tests/plots/comut_design_4.svg)
 
 
 ### Example 5
 
 As compared to example 4, add another bar plot right of the right bar plot.
 
-![comut_design_5](https://github.com/ypradat/comut/blob/master/tests/plots/comut_design_5.svg)
+![comut_design_5](tests/plots/comut_design_5.svg)
 
 ### Example 6
 
 As compared to example 1, replace a simple bar plot by grouped bar plot.
 
-![comut_design_6](https://github.com/ypradat/comut/blob/master/tests/plots/comut_design_6.svg)
+![comut_design_6](tests/plots/comut_design_6.svg)
