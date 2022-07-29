@@ -1,9 +1,42 @@
+# Tags
+*tags
+
+# Logs 
+log/
+*.log
+
+# Mac specific
+.DS_Store
+.DS_Store?
+
+# Python
+.ipynb_checkpoints
 __pycache__/
 *.pyc
+*.ycm_extra_conf.py
+*.coverage*
+
+# Python test
+*.pytest_cache
+*.coverage
+*.coveragerc
+coverage.xml
+*.egg-info/
+
+# Python build
 build
 dist
-.ipynb_checkpoints
-*.egg-info
-**/.DS_Store
-.improvements
-*.swp
+
+# Open cached files 
+*.m~
+*.*swp
+*.*swo
+
+# Compiled sources
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+.Rproj.user
