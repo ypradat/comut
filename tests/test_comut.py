@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-@modified: Apr 14 2022
 @created: Apr 25 2022
+@modified: Jan 31 2023
 @author: Yoann Pradat
 
 Tests for comut module.
@@ -489,3 +489,68 @@ def test_comut_design_6():
     render_plot(comut_object=comut_test, hspace=0.1, wspace=0.25)
     comut_test.add_unified_legend(ncol=2, labels_orders={"Biopsy site": ["Lung", "Lymph Node", "Liver", "Kidney"]})
     save_plot(comut_test, filepath="tests/plots/comut_design_6.svg")
+
+
+def test_comut_design_7():
+    dfs_data = load_data()
+    mappings = load_mapping()
+
+    # columns ordering
+    cols = ["Sample%d" % i for i in range(1,51)]
+
+    # rows ordering
+    rows = ['CDKN2A', 'TP53', 'NF1', 'NRAS', 'BRAF']
+
+    comut_test = comut.CoMut()
+    comut_test.samples = cols
+    comut_test.add_categorical_data(data=dfs_data["mut"], name='Mutation type', category_order=rows,
+                                    mapping=mappings["mut"], xtick_show=True, xtick_fontdict={"fontsize": 8},
+                                    ytick_style='italic', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_continuous_data(data=dfs_data["pur"], name='Purity',
+                                   mapping=mappings["pur"], xtick_show=False,
+                                   ytick_style='normal', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_categorical_data(data=dfs_data["bio"], name='Biopsy site',
+                                    mapping=mappings["bio"], xtick_show=False,
+                                    ytick_style='normal', ytick_fontdict={"fontsize": 12})
+
+
+    comut_test.add_bar_data(data=dfs_data["bur"], name='Mutation burden',
+                            mapping=mappings["bur"], ytick_fontdict={"fontsize": 12}, stacked=True,
+                            ylabel="Nosynon.\nMutations", ylabel_rotation=90)
+
+
+    comut_test.add_side_bar_data(data=dfs_data["frq"], paired_name='Mutation type', name="Mutated samples",
+                                 position="left", mapping=mappings["frq"], xtick_fontdict={"fontsize": 12},
+                                 stacked=True, xlabel="Mutated samples", xlabel_rotation=0)
+
+    comut_test.add_side_error_data(data=dfs_data["err"], paired_name='Mutation type', name="Odds ratio",
+                                   position="right", mapping=mappings["err"], xtick_fontdict={"fontsize": 10},
+                                   xlabel="Odds ratio", xlabel_rotation=0)
+
+
+    # replace legend of Mutation type
+    render_plot(comut_object=comut_test, hspace=0.1, wspace=0.1, widths=[1,5,1], shadow_width_left=0.7)
+
+    green_star = mlines.Line2D([], [], color='limegreen', marker='*', linestyle='None', markersize=10)
+    blue_star = mlines.Line2D([], [], color='royalblue', marker='*', linestyle='None', markersize=10)
+    handles = [green_star, blue_star]
+    labels = ["Tier1", "Tier2"]
+
+    handles_more = [handles]
+    labels_more = [labels]
+    titles_more = ["Resistances"]
+
+    comut_test.add_unified_legend(nrow=5, axis_name="Odds ratio", ignored_plots=["Mutation type"],
+                                  handles_more=handles_more, labels_more=labels_more, titles_more=titles_more,
+                                  headers_separate=["Mutation burden", "Biopsy site", "Resistances"])
+
+    comut_test.axes['Odds ratio'].axvline(1, color = 'black', linestyle = 'dotted', linewidth = 2)
+    comut_test.axes['Odds ratio'].set_xscale('log')
+    comut_test.axes['Odds ratio'].set_xticks([0.2, 1, 5])
+    comut_test.axes['Odds ratio'].set_xticklabels([0.2, 1, 5])
+
+    save_plot(comut_test, filepath="tests/plots/comut_design_7.svg")

@@ -2290,10 +2290,10 @@ class CoMut:
         legend._legend_box.align = title_align
         return legend
 
-    def add_unified_legend(self, axis_name=None, border_white=None, headers=True,
+    def add_unified_legend(self, axis_name=None, border_white=None, headers=True, headers_separate=[],
                            rename=None, bbox_to_anchor=(1, 1), ignored_values=None,
                            ignored_plots=None, frameon=False, handles_more=None, labels_more=None,
-                           titles_more=None, labels_orders={}, **legend_kwargs):
+                           titles_more=None, labels_orders={}, ncol=None, nrow=None,  **legend_kwargs):
         '''Add a unified legend to the CoMut plot
 
         This combines all the various legends into a one column master legend.
@@ -2375,6 +2375,7 @@ class CoMut:
         # store labels and patches
         legend_labels = []
         legend_patches = []
+        legend_headers = []
 
         # loop through plots in reverse order (since plots are bottom up)
         plot_names = list(self._plots.keys())[::-1]
@@ -2426,6 +2427,7 @@ class CoMut:
                     if plot_type != 'indicator' and headers:
                         legend_labels.append(name)
                         legend_patches.append(patches.Patch(color='none', alpha=0))
+                        legend_headers.append(name)
 
                     # add plot labels and legends
                     legend_labels += list(handle_lookup.keys())
@@ -2448,10 +2450,11 @@ class CoMut:
                     handle_lookup[patch_name] = patches.Patch(facecolor='white', edgecolor='black',
                                                               label=patch_name)
 
-            # add legend subheader for nonindicator data
+            # add legend header
             if headers:
                 legend_labels.append(title)
                 legend_patches.append(patches.Patch(color='none', alpha=0))
+                legend_headers.append(title)
 
             # add plot labels and legends
             legend_labels += list(handle_lookup.keys())
@@ -2464,6 +2467,96 @@ class CoMut:
             # rename labels
             legend_labels = [rename.get(label, label) for label in legend_labels]
 
+        # organize the legend if legend labels from some headers should be displayed in separate columns
+        if headers_separate is None:
+            headers_separate = []
+        else:
+            headers_separate = [x for x in legend_labels if x in headers_separate]
+
+        if ncol is not None and nrow is not None:
+            raise ValueError("You may specify only one of 'ncol' or 'nrow'.")
+        elif ncol is not None:
+            if len(headers_separate)>0:
+                raise NotImplementedError("You may not use headers_separate in combination with ncol. " + \
+                                          "Use nrow instead so that the number of columns is automatically set.")
+        else:
+            if len(headers_separate) > 0 and headers==True:
+                if nrow is None:
+                    # determine the largest number of rows necessary to draw headers in separate columns
+                    nrow = 0
+                    for header_separate in headers_separate:
+                        # get the start and end indices of legend items attached to the header
+                        start, i_start = False, 0
+                        stop, i_stop = False, len(legend_labels)-1
+                        for i, legend_label in enumerate(legend_labels):
+                            if not start:
+                                if legend_label==header_separate:
+                                    start = True
+                                    i_start = i
+                            else:
+                                if legend_label in legend_headers:
+                                    i_stop = i-1
+                                    break
+                        if i_stop - i_start > nrow:
+                            nrow = i_stop - i_start
+
+                if nrow < 2:
+                    raise ValueError("The value of nrow cannot be smaller than 2.")
+
+                for header_separate in headers_separate:
+                    # get the start and end indices of legend items attached to the header
+                    start, i_start = False, 0
+                    stop, i_stop = False, len(legend_labels)-1
+                    for i, legend_label in enumerate(legend_labels):
+                        if not start:
+                            if legend_label==header_separate:
+                                start = True
+                                i_start = i
+                        else:
+                            if legend_label in legend_headers:
+                                i_stop = i-1
+                                break
+
+                    while i_start % nrow != 0:
+                        # add a spacer patch
+                        legend_labels.insert(i_start-1, '')
+                        legend_patches.insert(i_start-1,patches.Patch(color='white', alpha=0))
+                        i_start += 1
+                        i_stop += 1
+
+                    if (i_stop - i_start + 1) % nrow == 0:
+                        if i_stop < len(legend_labels)-1 and legend_labels[i_stop+1] == '':
+                            del legend_labels[i_stop+1]
+                            del legend_patches[i_stop+1]
+                    else:
+                        if i_stop - i_start + 1 > nrow:
+                            if legend_labels[i_stop] == '':
+                                del legend_labels[i_stop]
+                                del legend_patches[i_stop]
+                                i_stop = i_stop - 1
+
+                        while (i_stop - i_start + 1) % nrow != 0:
+                            # add a spacer patch
+                            legend_labels.insert(i_stop+1, '')
+                            legend_patches.insert(i_stop+1,patches.Patch(color='white', alpha=0))
+                            i_stop += 1
+
+            nlabs = len(legend_labels)
+
+            if nrow is None:
+                nrow = nlabs
+                ncol = 1
+            elif nrow < 2:
+                raise ValueError("The value of nrow cannot be smaller than 2.")
+            else:
+                ncol = int(np.ceil(nlabs/nrow))
+
+            while nlabs<ncol*nrow:
+                # add a spacer patch
+                legend_labels.append('')
+                legend_patches.append(patches.Patch(color='white', alpha=0))
+                nlabs += 1
+
         # add to the top axis if no axis is given
         if axis_name is None:
             axis = self.axes[list(self.axes.keys())[-1]]
@@ -2472,7 +2565,7 @@ class CoMut:
 
         # add legend to axis
         leg = axis.legend(labels=legend_labels, handles=legend_patches,
-                          bbox_to_anchor=bbox_to_anchor, frameon=frameon, **legend_kwargs)
+                          bbox_to_anchor=bbox_to_anchor, frameon=frameon, ncol=ncol, **legend_kwargs)
 
         # more involved code to align the headers
         if headers:
